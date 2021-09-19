@@ -10,12 +10,13 @@
 TEXFILE= paper
 RDIR= .
 RDIR01= ./01_Potential_Outcomes_Introduction
+RDIR02= ./02_Tabular_Graphical_Summaries_for_Causal_Inference
 FIGDIR= ./figs
 
 # list R files
 # RFILES := $(wildcard $(RDIR)/*.R)
 # Indicator files to show R file has run
-OUT_FILES:=  $(RDIR)/README.Rout $(RDIR01)/Lecture_potential_outcomes_intro.Rout 
+OUT_FILES:=  $(RDIR)/README.Rout $(RDIR01)/Lecture_potential_outcomes_intro.Rout $(RDIR02)/Rexample_TableOne_SMD.Rout
 
 all: $(OUT_FILES)
 
@@ -25,6 +26,9 @@ $(RDIR)/README.Rout: $(RDIR)/README.R $(RDIR)/README.Rmd $(RDIR)/library_PUBH_74
 	
 $(RDIR01)/Lecture_potential_outcomes_intro.Rout: $(RDIR01)/Lecture_potential_outcomes_intro.R $(RDIR01)/Lecture_potential_outcomes_intro.Rmd 
 	R CMD BATCH --slave --vanilla $(RDIR01)/Lecture_potential_outcomes_intro.R $(RDIR01)/Lecture_potential_outcomes_intro.Rout	
+
+$(RDIR02)/Rexample_TableOne_SMD.Rout: $(RDIR02)/Rexample_TableOne_SMD.R $(RDIR02)/Rexample_TableOne_SMD.Rmd 
+	R CMD BATCH --slave --vanilla $(RDIR02)/Rexample_TableOne_SMD.R $(RDIR02)/Rexample_TableOne_SMD.Rout	
 
 # Clean up stray files
 #clean:

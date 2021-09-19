@@ -6,3 +6,4 @@
 ####################################
 
 library(knitr)
+source("02_Tabular_Graphical_Summaries_for_Causal_Inference/Rexample_TableOne_SMD_library.R")

@@ -1,0 +1,139 @@
+
+
+processing file: Rexample_TableOne_SMD.Rmd
+  |                                                                              |                                                                      |   0%  |                                                                              |..                                                                    |   3%
+  ordinary text without R code
+
+  |                                                                              |.....                                                                 |   6%
+label: setup (with options) 
+List of 1
+ $ include: logi FALSE
+
+  |                                                                              |.......                                                               |  10%
+  ordinary text without R code
+
+  |                                                                              |.........                                                             |  13%
+label: unnamed-chunk-1 (with options) 
+List of 1
+ $ size: chr "tiny"
+
+  |                                                                              |...........                                                           |  16%
+  ordinary text without R code
+
+  |                                                                              |..............                                                        |  19%
+label: unnamed-chunk-2 (with options) 
+List of 1
+ $ size: chr "tiny"
+
+  |                                                                              |................                                                      |  23%
+  ordinary text without R code
+
+  |                                                                              |..................                                                    |  26%
+label: unnamed-chunk-3 (with options) 
+List of 1
+ $ size: chr "tiny"
+
+  |                                                                              |....................                                                  |  29%
+  ordinary text without R code
+
+  |                                                                              |.......................                                               |  32%
+label: unnamed-chunk-4 (with options) 
+List of 1
+ $ size: chr "tiny"
+
+  |                                                                              |.........................                                             |  35%
+  ordinary text without R code
+
+  |                                                                              |...........................                                           |  39%
+label: unnamed-chunk-5 (with options) 
+List of 1
+ $ size: chr "tiny"
+
+  |                                                                              |.............................                                         |  42%
+  ordinary text without R code
+
+  |                                                                              |................................                                      |  45%
+label: unnamed-chunk-6 (with options) 
+List of 1
+ $ size: chr "tiny"
+
+  |                                                                              |..................................                                    |  48%
+  ordinary text without R code
+
+  |                                                                              |....................................                                  |  52%
+label: unnamed-chunk-7 (with options) 
+List of 1
+ $ size: chr "tiny"
+
+  |                                                                              |......................................                                |  55%
+  ordinary text without R code
+
+  |                                                                              |.........................................                             |  58%
+label: unnamed-chunk-8 (with options) 
+List of 1
+ $ size: chr "tiny"
+
+  |                                                                              |...........................................                           |  61%
+  ordinary text without R code
+
+  |                                                                              |.............................................                         |  65%
+label: unnamed-chunk-9 (with options) 
+List of 1
+ $ size: chr "tiny"
+
+  |                                                                              |...............................................                       |  68%
+  ordinary text without R code
+
+  |                                                                              |..................................................                    |  71%
+label: unnamed-chunk-10 (with options) 
+List of 1
+ $ size: chr "tiny"
+
+  |                                                                              |....................................................                  |  74%
+  ordinary text without R code
+
+  |                                                                              |......................................................                |  77%
+label: unnamed-chunk-11 (with options) 
+List of 2
+ $ eval: logi FALSE
+ $ size: chr "tiny"
+
+  |                                                                              |........................................................              |  81%
+  ordinary text without R code
+
+  |                                                                              |...........................................................           |  84%
+label: unnamed-chunk-12 (with options) 
+List of 2
+ $ eval: logi FALSE
+ $ size: chr "tiny"
+
+  |                                                                              |.............................................................         |  87%
+  ordinary text without R code
+
+  |                                                                              |...............................................................       |  90%
+label: unnamed-chunk-13 (with options) 
+List of 3
+ $ echo   : logi FALSE
+ $ size   : chr "tiny"
+ $ results: chr "hide"
+
+  |                                                                              |.................................................................     |  94%
+  ordinary text without R code
+
+  |                                                                              |....................................................................  |  97%
+label: unnamed-chunk-14 (with options) 
+List of 1
+ $ eval: logi FALSE
+
+  |                                                                              |......................................................................| 100%
+  ordinary text without R code
+
+
+output file: Rexample_TableOne_SMD.knit.md
+
+/private/var/folders/f4/nqs_tn8j29l78jxg3nchcb580000gn/T/AppTranslocation/257315EB-9046-4463-A774-7F1BEE25B75E/d/RStudio.app/Contents/MacOS/pandoc/pandoc +RTS -K512m -RTS Rexample_TableOne_SMD.knit.md --to beamer --from markdown+autolink_bare_uris+tex_math_single_backslash --output Rexample_TableOne_SMD.tex --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/latex-div.lua --highlight-style tango --pdf-engine pdflatex --self-contained 
+
+Output created: Rexample_TableOne_SMD.pdf
+> proc.time()
+   user  system elapsed 
+ 10.036   1.913  16.940 
