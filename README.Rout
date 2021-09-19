@@ -1,0 +1,19 @@
+
+
+processing file: README.Rmd
+  |                                                                              |                                                                      |   0%  |                                                                              |...................................                                   |  50%
+  ordinary text without R code
+
+  |                                                                              |......................................................................| 100%
+label: unnamed-chunk-1 (with options) 
+List of 2
+ $ echo   : logi FALSE
+ $ message: logi FALSE
+
+
+output file: README.md
+
+[1] "README.md"
+> proc.time()
+   user  system elapsed 
+  0.282   0.096   0.539 

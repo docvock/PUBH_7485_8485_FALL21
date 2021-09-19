@@ -21,12 +21,13 @@ This course uses the statistical software of R, a freely available statistical s
 
 ### Reproduce the Output and Manuscript
 
-The main directory contains a `Makefile` which can be run to obtain all the output for the course and compile the slides.  This makefile encodes the dependencies between the different files described above. For those not familiar with makefiles, we have included a "Make-like" file, `rmaster_source.R` which indicates the order in which the .R files should be sourced.
+The main directory contains a `Makefile` which can be run to obtain all the output for the course and compile the slides.  This makefile encodes the dependencies between the different files described above. For those not familiar with makefiles, I have included a "Make-like" file, `r_complete_source.R` which indicates the order in which the .R files should be sourced.
 
 ### Session Info
-The slides for this course were compiled with [RStudio](http://www.rstudio.com/) (v. 1.4.1717) with the following R session. The list of packages used throughout the course is maintained in `library_7485_8485.R`; the version of these packages is listed below. 
+The slides for this course were compiled with [RStudio](http://www.rstudio.com/) (v. 1.4.1717) with the following R session. The list of packages used throughout the course is maintained in `library_PUBH_7485_8485.R`; the version of these packages is listed below. 
 
 ```{r, echo=FALSE, message=FALSE}
 # upload all packages used so that information is included in session info
+source(library_PUBH_7485_8485.R)
 sessionInfo()
 ```
