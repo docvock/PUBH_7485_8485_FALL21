@@ -6,5 +6,5 @@
 #   Files Created: ./README.md 
 ####################################
 
-library(rmarkdown)
-render('README.Rmd')
+library(knitr)
+knit('README.Rmd')

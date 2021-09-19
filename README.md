@@ -26,7 +26,26 @@ The main directory contains a `Makefile` which can be run to obtain all the outp
 ### Session Info
 The slides for this course were compiled with [RStudio](http://www.rstudio.com/) (v. 1.4.1717) with the following R session. The list of packages used throughout the course is maintained in `library_7485_8485.R`; the version of these packages is listed below. 
 
-```{r, echo=FALSE, message=FALSE}
-# upload all packages used so that information is included in session info
-sessionInfo()
+
+```
+## R version 4.1.1 (2021-08-10)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Big Sur 11.4
+## 
+## Matrix products: default
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+## [1] knitr_1.34     rmarkdown_2.11
+## 
+## loaded via a namespace (and not attached):
+##  [1] compiler_4.1.1  magrittr_2.0.1  fastmap_1.1.0   htmltools_0.5.2 tools_4.1.1     yaml_2.2.1     
+##  [7] jquerylib_0.1.4 stringi_1.7.4   stringr_1.4.0   xfun_0.26       digest_0.6.27   rlang_0.4.11   
+## [13] evaluate_0.14
 ```
