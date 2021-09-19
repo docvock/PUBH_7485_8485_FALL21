@@ -1,0 +1,240 @@
+---
+title: "Introduction to Causal Inference & Potential Outcomes"
+author: "David M. Vock"
+date: "PubH 7485/8485"
+output: beamer_presentation
+theme: "Boadilla"
+colortheme: "whale"
+fonttheme: "structurebold"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+```
+
+
+## For discussion
+
+- What is causal inference? 
+
+## Potential outcome
+
+- The outcome that would have been observed had possibly contrary to fact an individual a specific intervention/treatment/action
+- Denote potential outcomes using a superscript notation; i.e., $Y^a$ is the value of the variable $Y$ for a randomly selected individual if s/he received intervention $a$
+- Can think of potential outcomes as inherent characteristics of an individual 
+- This notation implicitly assumes that the treatment is well defined and that outcomes do not depend on the treatment others received (more on this shortly)
+
+## Causal Inference
+
+- Causal inference concerns learning about (e.g., estimating, making inferences about) the distribution of potential outcomes and summary measures of those distributions using observed data.
+- Next slide has the distribution if everyone in the population were to receive treatment 1 (i.e., distribution of $Y^1$) and distribution if everyone in the population were to receive treatment 0 (i.e., distribution of $Y^0$)
+
+## Example of Distribution of Potential Outcomes
+
+```{r, echo=FALSE, cache = TRUE}
+set.seed(1101985)
+n <- 10000
+gamma <- 1
+alpha <- 2
+X <- rnorm(n, 0, 1)
+Y1 <- rnorm(n, gamma*X + 4, 1)
+Y0 <- rnorm(n, gamma*X, 1)
+par(mfrow = c(1, 2))
+hist(Y1)
+hist(Y0)
+```
+
+## Summary Measures
+
+- As is the case with any analysis, we need so way of summarizing these distributions
+- Common summary measures from "associational" analyses also apply here
+
+## Key Population Causal Estimands for Binary Treatment
+
+- (population) average treatment effect (ATE): 
+
+$E(Y^1 - Y^0) = E(Y^1) - E(Y^0)$
+
+- (population) average treatment effect among treated (ATT):
+
+$E(Y^1 - Y^0 | A = 1) = E(Y^1| A = 1) - E(Y^0| A = 1)$, where $A$ is treatment received (1 = trt, 0  = control)
+
+- (population) conditional average treatment effect (CATE):
+
+$E(Y^1 - Y^0 | X ) = E(Y^1| X) - E(Y^0| X)$
+
+## Other Population Causal Estimands for Binary Treatment
+
+- For binary outcome data: relative risk or odds ratio  
+
+$P(Y^1 = 1)/P(Y^0 = 1)$ or $\tfrac{P(Y^1 = 1)}{P(Y^1 = 0)} / \tfrac{P(Y^0 = 1)}{P(Y^0 = 0)}$
+
+- For survival data: survival difference at $t$
+
+$P(Y^1 > t) - P(Y^0 > t)$
+
+
+
+## Observed Data Notation
+
+- Do not observe potential outcomes on individuals 
+
+For a randomly selected individual
+
+- $Y$ - observed response/outcome 
+- $A$ - treatment received; for now we will assume that $A$ has only two levels: 1 (treated group) and 0 (control group)
+- $X$ - (vector of) covariates
+
+## Consistency and invidual causal effect 
+
+- Individual causal effect for individual $i$: $Y_i^1 - Y_i^0$
+- Consistency assumption - $Y = Y^A$ or another way of writing this is if treatment is binary $Y = Y^1A + Y^0(1-A)$. In other words we observe the potential outcome for the treatment actually received
+- FUNDAMENTAL PROBLEM OF CAUSAL INFERENCE: only observe one potential outcome on each subject and without ridiculously strong assumptions the individual causal effect is not identified
+- Causal inference is inherently a missing data problem
+
+
+## Interference and SUTVA
+
+- Interference: The distribution of the potential outcome under treatment $a$ depends on the treatment others receive. Examples?
+- In the presence of interference, the counterfactual outcome $Y_i^a$ for an individual $i$ is not well defined because an individual's outcome depends also on other's treatment assignment.  
+- Another implicit assumption in our definition of a individual's counterfactual outcome under treatment $a$ is that there is only one version of treatment $A = a$
+- Stable-unit-treatment-value assumption contains both of these assumptions
+
+
+## Causal effect
+- Want to estimate a "causal effect" of $A$
+- Defined the causal treatment effect for individual $i$ as $Y_i^1 - Y_i^0$
+- As we will establish, there is no possibility of measuring the subject-specific causal treatment effect for any individual $i$.
+- However, it may be possible, under certain assumptions to estimate a population-level causal treatment effect
+
+
+## Remark on Causality
+- The definition of causal treatment effect may not get at the heart of the mechanism of causality, especially if, the intervention $A = a$ may trigger a series of events prior to the response. 
+- However (for the time being), we will not be considering factors that may occur between intervention and response since we are considering point exposure studies. We are only interested in the end result however that may occur.
+- Still, there is some appeal to the notion of "what would be the difference in response for the same individual subject to two different interventions"
+- Later in the course we will study time-dependent interventions where we will consider the effect that a sequence of interventions given over time will have on the response of interest (including causal mediation)
+
+
+## Example Dataset
+```{r, echo=FALSE, cache = TRUE}
+set.seed(1101985)
+sample.use <- sample(1:10000, 10, replace = FALSE)
+Y0.use <- round(Y0[sample.use], 1)
+Y1.use <- round(Y1[sample.use], 1)
+A.use <- c(0, 1, 0, 1, 0, 1, 0, 1, 0, 1)
+X.use <- round(X[sample.use], 1)
+data <- data.frame(Y0 = Y0.use, Y1 = Y1.use, A = A.use, X = X.use)
+print(data)
+```
+
+## Causal Estimands
+- NOTE: In the real world we would not observe $\{ Y^0, Y^1 \}$ 
+- Inherent missing data problem
+
+## Example Dataset: What we really get to see
+```{r, echo=FALSE, cache = TRUE}
+Y0.use2 <- ifelse(A.use == 0, Y0.use, NA)
+Y1.use2 <- ifelse(A.use == 1, Y1.use, NA)
+Y.use2 <- ifelse(A.use == 1, Y1.use, Y0.use)
+data <- data.frame(Y0 = Y0.use2, Y1 = Y1.use2, Y = Y.use2, A = A.use, X = X.use)
+print(data)
+```
+
+
+## Fundamental Problem of Causal Inference
+
+- Causal models are statistical models for potential outcomes
+- E.g., we might assume that $Y^0 \sim N(\mu, \sigma^2)$ and  $Y^1 \sim N(\mu + \delta, \sigma^2)$ so that the average treatment effect is $\delta$
+- We do not observe $\{ Y^0, Y^1 \}$ but instead observe $(X, A, Y)$
+- Key question: can we use the observed data to learn about causal models/parameters?
+- Key answer: yes but not without some assumptions
+
+## Statistics 101
+
+- Typically assume that we have sampled data randomly from some population of interest (maybe a somewhat contrived population - "all individuals with abnormal heart rate who would have enrolled in a Medtronic study")
+- LOTS of statistical tools to estimate parameters and corresponding uncertainty
+- For example, if I take a sample of size 10 from population of interest, we could estimate population mean, construct a confidence interval, etc.  
+```{r, echo = FALSE, cache=TRUE}
+print("Sample of Y1")
+print(Y1.use)
+```
+
+## Statistics 101
+- Sometimes we have missing data
+- If the missingness is completely random, then it is as if we just took a smaller sample from the population 
+```{r, echo = FALSE, cache = TRUE}
+set.seed(110985)
+print("Sample of Y1")
+print(Y1.use2)
+print("Observed Data Indicator")
+print(A.use)
+```
+- Note: observed data indicator is independent of response $Y^1$
+
+## Randomization
+
+- Intuitively, it has been accepted that the use of a randomized will result in an unbiased estimator of causal treatment effect
+- Patients are assigned to treatment interventions according to a random mechanism that is independent of all other factors
+- Therefore, individuals randomized to say two treatment groups are similar, on average, with respect to all characteristics except for the treatment intervention they are assigned to
+- Consequently, we feel confidence that differences in response between two randomized groups can be reasonably attributed to (assigned) treatment and not other factors prior to treatment assignment
+- Can we develop this more formally
+
+## Potential outcomes as baseline covariate
+
+- If $X$ is a baseline covariate, then randomization guarantees that $A$ is independent of $X$
+- Remember, it is helpful to think of the potential outcomes $\{ Y_i^1, Y_i^0 \}$ as inherent characteristics of patient $i$ before any treatment is assigned to them
+- That is, in some sense, these potential outcomes can be viewed as baseline characteristics of patient $i$ that are unobserved
+- Thus, for a randomized trial, it is reasonable to assume that $\{ Y_i^1, Y_i^0 \}$ is independent of $A_i$
+
+## Note
+
+- The assumption that treatment assignment is independent of potential outcomes should not be confused with treatment assignment being independent of the observed response 
+- That is, $A_i$ independent of $\{ Y_i^1, Y_i^0 \}$ does NOT imply $A_i$ independent of $Y_i =  A_iY_i^1 + (1 - A_i)Y_i^0$
+- The observed response $Y_i$ is a consequence of the assigned treatment $A_i$ whereas the potential outcomes $\{ Y_i^1, Y_i^0 \}$ are inherent characteristics of the individual which are not affected by the assigned treatment
+
+## Original Population
+
+```{r, echo = FALSE, cache = TRUE}
+hist(Y1)
+```
+
+## Identify 500 Participants for Study
+
+```{r, echo = FALSE, cache = TRUE}
+set.seed(110985)
+sample.use.large <- sample(1:10000, 500, replace = FALSE)
+hist(Y1[sample.use.large])
+```
+
+## Randomly Assign 250 to Receive Treatment (only observe $Y^1$ on these participants)
+
+
+```{r, echo = FALSE, cache = TRUE}
+set.seed(110985)
+sample.use.large.A1 <- sample(sample.use.large, 250, replace = FALSE)
+hist(Y1[sample.use.large.A1])
+```
+
+
+## Natural estimators
+
+- Assume we have a sample of data from a randomized study $(Y_i, A_i), i = 1, \ldots, n$
+- Consider the difference in the treatment-specific sample averages $\overline{Y}_1 - \overline{Y}_0$ where $\overline{Y}_1 = \sum_{i=1}^n A_iY_i / \sum_{i=1}^n A_i = \sum_{i=1}^n A_iY^1_i / \sum_{i=1}^n A_i$ and $\overline{Y}_0 = \sum_{i=1}^n (1-A_i)Y_i / \sum_{i=1}^n (1-A_i) = \sum_{i=1}^n (1-A_i)Y^0_i / \sum_{i=1}^n (1-A_i)$ 
+- This is an unbiased, consistent, and asymptotically normal estimator of the ATE
+
+## Statistics 101
+- Challenge occurs when missingness is not random
+```{r, echo = FALSE, cache = TRUE}
+Y1.med <- median(Y1.use)
+Y1.miss2 <- Y1.use
+Y1.miss2[which(Y1.use > Y1.med)] <- NA
+print(Y1.miss2)
+```
+- Now sample is no longer representative of population of interest. Standard estimation and inference techniques do not hold
+
+

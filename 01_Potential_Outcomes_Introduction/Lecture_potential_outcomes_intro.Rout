@@ -1,0 +1,104 @@
+
+
+processing file: Lecture_potential_outcomes_intro.Rmd
+  |                                                                              |                                                                      |   0%  |                                                                              |...                                                                   |   5%
+  ordinary text without R code
+
+  |                                                                              |.......                                                               |  10%
+label: setup (with options) 
+List of 1
+ $ include: logi FALSE
+
+  |                                                                              |..........                                                            |  14%
+  ordinary text without R code
+
+  |                                                                              |.............                                                         |  19%
+label: unnamed-chunk-1 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.................                                                     |  24%
+  ordinary text without R code
+
+  |                                                                              |....................                                                  |  29%
+label: unnamed-chunk-2 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.......................                                               |  33%
+  ordinary text without R code
+
+  |                                                                              |...........................                                           |  38%
+label: unnamed-chunk-3 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |..............................                                        |  43%
+  ordinary text without R code
+
+  |                                                                              |.................................                                     |  48%
+label: unnamed-chunk-4 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.....................................                                 |  52%
+  ordinary text without R code
+
+  |                                                                              |........................................                              |  57%
+label: unnamed-chunk-5 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |...........................................                           |  62%
+  ordinary text without R code
+
+  |                                                                              |...............................................                       |  67%
+label: unnamed-chunk-6 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |..................................................                    |  71%
+  ordinary text without R code
+
+  |                                                                              |.....................................................                 |  76%
+label: unnamed-chunk-7 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.........................................................             |  81%
+  ordinary text without R code
+
+  |                                                                              |............................................................          |  86%
+label: unnamed-chunk-8 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |...............................................................       |  90%
+  ordinary text without R code
+
+  |                                                                              |...................................................................   |  95%
+label: unnamed-chunk-9 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |......................................................................| 100%
+  ordinary text without R code
+
+
+output file: Lecture_potential_outcomes_intro.knit.md
+
+/private/var/folders/f4/nqs_tn8j29l78jxg3nchcb580000gn/T/AppTranslocation/257315EB-9046-4463-A774-7F1BEE25B75E/d/RStudio.app/Contents/MacOS/pandoc/pandoc +RTS -K512m -RTS Lecture_potential_outcomes_intro.knit.md --to beamer --from markdown+autolink_bare_uris+tex_math_single_backslash --output Lecture_potential_outcomes_intro.tex --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/latex-div.lua --highlight-style tango --pdf-engine pdflatex --self-contained 
+
+Output created: Lecture_potential_outcomes_intro.pdf
+> proc.time()
+   user  system elapsed 
+  5.994   2.977  16.279 
