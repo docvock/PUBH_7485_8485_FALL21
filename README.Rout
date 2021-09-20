@@ -11,9 +11,95 @@ List of 2
  $ message: logi FALSE
 
 
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:stats':
+
+    filter, lag
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+Loading required package: Hmisc
+Loading required package: lattice
+Loading required package: survival
+Loading required package: Formula
+Loading required package: ggplot2
+
+Attaching package: 'Hmisc'
+
+The following objects are masked from 'package:dplyr':
+
+    src, summarize
+
+The following objects are masked from 'package:xtable':
+
+    label, label<-
+
+The following objects are masked from 'package:base':
+
+    format.pval, units
+
+Loading required package: SparseM
+
+Attaching package: 'SparseM'
+
+The following object is masked from 'package:base':
+
+    backsolve
+
+Loading required package: grid
+Loading required package: magrittr
+Loading required package: checkmate
+Loading required package: MASS
+
+Attaching package: 'MASS'
+
+The following object is masked from 'package:dplyr':
+
+    select
+
+## 
+##  Matching (Version 4.9-9, Build Date: 2021-03-15)
+##  See http://sekhon.berkeley.edu/matching for additional documentation.
+##  Please cite software as:
+##   Jasjeet S. Sekhon. 2011. ``Multivariate and Propensity Score Matching
+##   Software with Automated Balance Optimization: The Matching package for R.''
+##   Journal of Statistical Software, 42(7): 1-52. 
+##
+
+Loading required package: Matrix
+
+Attaching package: 'survey'
+
+The following object is masked from 'package:rms':
+
+    calibrate
+
+The following object is masked from 'package:Hmisc':
+
+    deff
+
+The following object is masked from 'package:graphics':
+
+    dotchart
+
+
+Attaching package: 'boot'
+
+The following object is masked from 'package:survival':
+
+    aml
+
+The following object is masked from 'package:lattice':
+
+    melanoma
+
+
 output file: README.md
 
 [1] "README.md"
 > proc.time()
    user  system elapsed 
-  0.270   0.092   0.459 
+  2.450   0.361   3.402 

@@ -28,6 +28,6 @@ The slides for this course were compiled with [RStudio](http://www.rstudio.com/)
 
 ```{r, echo=FALSE, message=FALSE}
 # upload all packages used so that information is included in session info
-source(library_PUBH_7485_8485.R)
+source("library_PUBH_7485_8485.R")
 sessionInfo()
 ```

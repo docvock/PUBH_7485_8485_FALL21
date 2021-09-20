@@ -1,6 +1,6 @@
 ###################################
 # File: ./Rexample_TableOne_SMD.R
-#   Purpose: Code needed to compile Lecture_potential_outcomes.R into pdf file
+#   Purpose: Code needed to compile Rexample_TableOne_SMD.Rmd into pdf file
 #   Author: David M. Vock
 #   Relies On: ./Rexample_TableOne_SMD.Rmd ./tableone_Example.TRI.png
 #   Files Created: ./Rexample_TableOne_SMD.pdf 

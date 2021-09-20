@@ -11,12 +11,13 @@ TEXFILE= paper
 RDIR= .
 RDIR01= ./01_Potential_Outcomes_Introduction
 RDIR02= ./02_Tabular_Graphical_Summaries_for_Causal_Inference
+RDIR03= ./03_Theory_Review
 FIGDIR= ./figs
 
 # list R files
 # RFILES := $(wildcard $(RDIR)/*.R)
 # Indicator files to show R file has run
-OUT_FILES:=  $(RDIR)/README.Rout $(RDIR01)/Lecture_potential_outcomes_intro.Rout $(RDIR02)/Rexample_TableOne_SMD.Rout
+OUT_FILES:=  $(RDIR)/README.Rout $(RDIR01)/Lecture_potential_outcomes_intro.Rout $(RDIR02)/Rexample_TableOne_SMD.Rout $(RDIR03)/Lecture_bootstrap.Rout
 
 all: $(OUT_FILES)
 
@@ -29,6 +30,9 @@ $(RDIR01)/Lecture_potential_outcomes_intro.Rout: $(RDIR01)/Lecture_potential_out
 
 $(RDIR02)/Rexample_TableOne_SMD.Rout: $(RDIR02)/Rexample_TableOne_SMD.R $(RDIR02)/Rexample_TableOne_SMD.Rmd 
 	R CMD BATCH --slave --vanilla $(RDIR02)/Rexample_TableOne_SMD.R $(RDIR02)/Rexample_TableOne_SMD.Rout	
+
+$(RDIR03)/Lecture_bootstrap.Rout: $(RDIR03)/Lecture_bootstrap.R $(RDIR03)/Lecture_bootstrap.Rmd 
+	R CMD BATCH --slave --vanilla $(RDIR03)/Lecture_bootstrap.R $(RDIR03)/Lecture_bootstrap.Rout	
 
 # Clean up stray files
 #clean:

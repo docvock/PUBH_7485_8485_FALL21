@@ -136,4 +136,4 @@ output file: Rexample_TableOne_SMD.knit.md
 Output created: Rexample_TableOne_SMD.pdf
 > proc.time()
    user  system elapsed 
- 10.036   1.913  16.940 
+  8.187   2.629  14.810 

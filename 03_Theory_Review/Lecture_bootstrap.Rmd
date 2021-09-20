@@ -1,0 +1,376 @@
+---
+title: "Review of Sampling Distributions, Bootstrap, and boot package"
+author: "David M. Vock"
+output: beamer_presentation
+date: "PubH 7485/8485"
+theme: "Boadilla"
+colortheme: "whale"
+fonttheme: "structurebold"
+---
+
+```{r setup, include=FALSE}
+source("Lecture_bootstrap_library.R")
+knitr::opts_chunk$set(echo = FALSE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+```
+
+## Key Terminology
+
+- Population: Individuals or units to which we would like to learn about
+- Parameter (of interest)/Estimand: Summary measure of some characteristic (i.e., variable) of the population. Typically use Greek letters to denote a parameter
+- Sample: Subset of the population of interest on which we collect data
+- Estimate: Best guess of the parameter of interest using the sample data we collect
+- Statistic/Estimator: A function or algorithm of the sample data to produce an estimate.  
+
+## Sampling Distribution
+
+Experimental set-up is usually as follows:
+
+1) Identify population of interest
+2) Take a sample from that population
+3) Calculate a statistic
+4) Use that statistic to infer something about population (more on this shortly)
+
+If I repeated steps 2-4, I would obtain a different sample, calculate a different value for the statistic which may affect my inferences in step 4.
+
+## A Toy Example
+
+- Suppose I am interested in the mean systolic blood pressure (SBP) of undergraduate students here at UMN ($\mu$)
+- Take a simple random sample of 10 students and get the following data: 105, 110, 112, 115, 118, 120,  125, 128, 130, 140 mmHg. $\hat \mu = \overline{x} = 120.3$ mmHg
+- Throughout, we will use $X$ to denote the SBP a randomly selected undergraduate student from UMN
+
+## A Toy Example Terminology
+
+- Population: Undergraduate students at UMN
+- Parameter (of interest)/Estimand: (population) Mean 
+- Sample: Simple random sample of 10 students
+- Estimate: 120.3 mmHg
+- Statistic/Estimator: sample average $\hat \mu = \overline{x} = \tfrac{1}{n} \sum_{i=1}^n X_i$
+
+## Sampling Distribution
+
+- Distribution: A function which gives the probability of different values for a random variable
+- Sampling distribution: "The probability distribution of a statistic/estimator is sometimes referred to as its sampling distribution. This emphasizes how the statistic varies in value across all samples that might be selected." (Devore and Beck)
+- Sampling distribution is important because our uncertainty in our estimate can be characterized through the sampling distribution. In other words, standard errors, confidence intervals, and hypothesis testing are all derived from the sampling distribution 
+- The sampling distribution depends (at least exactly) on the distribution in the population, the sample size, and sampling mechanism 
+- If we knew population distribution then one way of approximating the sampling distribution is through simulation
+
+## Simulating the Sampling Distribution
+
+- Suppose in the SBP example, the distribution of SBP among undergraduates at UMN follows a three-parameter gamma distribution with shape parameter 6.25,  scale parameter 4, and threshold or shift paramater 90
+- If we wanted to learn about the sampling distribution of an estimator $\hat \mu$ for a given sample size $n$ and hypothetically had access to the entire population, we would take repeated samples of size $n$ from the population, compute $\hat \mu$, and then assess the (properties of the) distribution of the distribution of $\hat \mu$
+
+## Distribution of the Population
+
+```{r, echo = FALSE}
+set.seed(1101985)
+mean <- 25
+sd <- 10
+beta = mean/sd^2
+alpha = mean * beta
+x <- 90:140
+plot(x, dgamma3(x, alpha, scale = 1/beta, thres= 90), type = "l",
+		 lwd = 3, ylab = "Density Function", xlab = "SPB")
+```
+
+## Simulating the Sampling Distribution
+\small{
+In the following code, I have
+
+- Sampled 10 subjects from this population.  
+- Computed the mean in the sample (i.e., my estimate of the mean in the population given this sample, $\hat \mu_1$. The subscript 1 indicates that this this is the estimated parameter from the first sample).    
+```{r, echo = TRUE}
+print("Sample of 10 Individuals")
+samp.1 <- rgamma3(10, alpha, scale = 1/beta, thres= 90)
+print(sort(round(samp.1)))
+print("mu hat")
+print(round(mean(samp.1), 1))
+```
+}
+
+## Simulating the Sampling Distribution
+
+- Note that I can repeat the above process $B$ times
+- Compute the parameter estimate in each sample. End up with $B$ estimates of the parameter $\mu$ (i.e., $\hat \mu_1, \ldots, \hat \mu_B$).
+- $\hat \mu_1, \ldots, \hat \mu_B$ are random samples from the sampling distribution and summary measures (e.g., standard deviation) of these $B$ estimates are summary measures of the sampling distribution (plus Monte Carlo error)
+
+## Histogram of Sampling Distribution
+
+```{r, echo = FALSE}
+B <- 1000
+mu.hat.samp <- NULL
+for(i in 1:B) {
+	samp.b <- rgamma3(10, alpha, scale = 1/beta, thres= 90)
+	mean.b <- mean(samp.b)
+	mu.hat.samp <- c(mu.hat.samp, mean.b)
+}
+hist(mu.hat.samp, xlab = "mu hat", main = "Histogram of Estimates of Mu")
+```
+
+
+## Standard Error
+
+- Standard error: standard deviation of the sampling distribution
+- Because we have $B$ samples from the sampling distribution, the standard deviation of $\hat \mu_1, \ldots, \hat \mu_B$ is the standard error (plus Monte Carlo error)
+
+```{r, echo = FALSE}
+print("Standard Deviation of Estimated Mu")
+print(round(sd(mu.hat.samp), 1))
+```
+
+## Bootstrap
+
+- Key problem with implementing the above in practice is that we do not know the distribution of $X$
+- Re-sampling-based method invented by Bradley Efron in 1979
+- Fundamental idea is that we can simulate the sampling distribution of an estimator using only one sample from the population
+
+## Resampling From the Sample
+
+- Basic idea is that the original sample is a "pretty good" representation of the population
+- Pretend that 105, 110, 112, 115, 118, 120,  125, 128, 130, 140 is the population. More formally we pretend that the population has pmf given by
+
+\small{
+\begin{table}[ht]
+\begin{center}
+\begin{tabular}{l|cccccccccc}
+$x$ & 105 & 110 & 112 & 115 & 118 & 120 & 125 & 128 & 130 & 140 \\
+\hline
+$\hat p(x)$ & 0.10 &  0.10 & 0.10 & 0.10 & 0.10 & 0.10 & 0.10 & 0.10 & 0.10 & 0.10\\
+\end{tabular}
+\end{center}
+\end{table}
+}
+
+## Empirical Distribution
+
+- Estimating $P(X = x) = p(x)$ by $\hat p(x) = \tfrac{1}{n} {\sum_{i = 1} ^ n X_i = x}$ is known as the empirical distribution  
+- Empirical distribution is a consistent, non-parametric estimator of the population pmf/pdf
+
+## Resampling From the Sample
+
+In the following code, I have
+
+- Sampled 10 subjects from this (estimated) population distribution. This sample is called a bootstrap sample (to distinguish from the original sample). Each observation in the bootstrap sample has a 1/10 chance of being 105, 110, 112, 115, 118, 120,  125, 128, 130, or 140. This is equivalent to taking a sample of size 10 with replacement from original sample.
+- Computed the mean in the sample (i.e., my estimate of the mean in the population given this sample, $\hat \mu_1$. The subscript 1 indicates that this this is the estimated parameter from the first sample).  
+
+
+## Approximately Simulating the Sampling Distribution
+
+- Example of taking 10 bootstrap samples and computing $\hat \mu$ using these bootstrap samples on the next slide
+
+```{r, echo=FALSE}
+bp <- c(105, 110, 112, 115, 118, 120,  125, 128, 130, 140)
+set.seed(8172013)
+data.total <- NULL
+for (i in 1:10) {
+	bp.i <- bp[sample(1:10,10, replace=T)]
+	data.total <- rbind(data.total, c(bp.i, mean(bp.i)))
+}
+data.total <- as.data.frame(data.total)
+colnames(data.total)[11] <- "mu_hat"
+data.total
+```
+
+## Approximately Simulating the Sampling Distribution
+
+- Note that I can repeat the above process $B$ times
+- Compute the parameter estimate in each sample. End up with $B$ estimates of the parameter $\mu$ (i.e., $\hat \mu_1, \ldots, \hat \mu_B$).
+- $\hat \mu_1, \ldots, \hat \mu_B$ are APPROXIMATELY random samples from the sampling distribution. The approximation is because I had to estimate the population distribution instead of using the TRUE distribution
+- Summary measures (e.g., standard deviation) of these $B$ estimates are summary measures of the sampling distribution (plus Monte Carlo error AND error from estimating the population distribution)
+
+## General Idea: Standard Error
+- Idea is that the standard deviation of the bootstrap estimates of $\hat \mu$ should be close to the standard deviation of the sampling distribution of $\hat \mu$
+
+
+## General Idea: Confidence Intervals
+- Percentile Bootstrap CI: 2.5th and 97.5th percentile of the bootstrap estimates of $\hat \mu$ should form a valid 95% confidence interval for $\mu$
+- Normal-based Bootstrap CI: Estimate $\pm$ critical value $\times$ bootstrap se
+- Many other flavors of bootstrap CIs: basic bootstrap, studentized bootstrap, bias corrected ($BC$), bias corrected and accelerated ($BC_a$),  
+- Percentile Bootstrap is by far the most intuitive and widely used
+
+## General Idea: Hyptothesis Testing
+- Much harder to do directly because resampling with replacement "puts no restriction on the data and thus does not generate an approximation to the null distribution of the test statistic"
+- Could generate a test statistic as (estimate-null value)/(bootstrap se)
+
+
+## Bootstrap Sampling Distribution 
+
+```{r, echo=FALSE}
+bp <- c(105, 110, 112, 115, 118, 120,  125, 128, 130, 140)
+set.seed(8172013)
+data.total <- NULL
+for (i in 1:1000) {
+	bp.i <- bp[sample(1:10,10, replace=T)]
+	data.total <- rbind(data.total, c(bp.i, mean(bp.i)))
+}
+hist(data.total[,11], xlab = "mu hat", main = "Histogram of Bootstrap Estimates of Mu")
+```
+
+## Bootstrap versus Typical SE
+
+Bootstrap SE
+```{r, echo=FALSE}
+print(round(sd(data.total[,11]), 1))
+```
+
+Typical SE = $\tfrac{s}{\sqrt{n}}$ where $s$ is the sample standard deviation
+```{r, echo=FALSE}
+print(round(sd(bp)/sqrt(10), 1))
+```
+
+## Bootstrap versus Typical CI
+
+Bootstrap CI
+```{r, echo=FALSE}
+(sort(data.total[,11]))[25]
+(sort(data.total[,11]))[975]
+```
+
+Typical CI = $\bar{x} \pm t_{\alpha/2, n-1}\tfrac{s}{\sqrt{n}}$
+```{r, echo=FALSE}
+mean(bp)-qt(0.975, 9)*sd(bp)/sqrt(10)
+mean(bp)+qt(0.975, 9)*sd(bp)/sqrt(10)
+```
+
+## Bootstrap versus Typical Test Statistic
+
+Let's consider a null hypothesis of $\mu = 120$
+
+Bootstrap Test Statistic
+```{r, echo=FALSE}
+print(round((mean(bp) - 120)/sd(data.total[,11]), 3))
+```
+
+Typical Test Statistic
+```{r, echo=FALSE}
+print(round((mean(bp) - 120)/(sd(bp)/sqrt(10)), 3))
+```
+
+## Why Use Bootstrap
+
+- The toy example and estimand/estimators used throughout there were "nice" (approximate) formula for the standard error, confidence interval, test statistics, etc.
+- BUT lots of estimators that we will consider will not be "nice" and will be complicated functions of other estimated parameters. We could derive the standard errors using the multivariate Delta theorem and M-estimation theory but that is tedious!!!
+
+## A Word of Caution
+
+- A LOT of researchers think that the bootstrap is magical or more precisely does not require making any distributional assumptions OR relying on the sample size to be large (asymptotic approach).
+- We did not make any distributional assumptions.
+- BUT the bootstrap is premised on the assumption that the sample is a good approximation of the population distribution (i.e., the empirical distribution is good). That requires a "large" sample to be true.
+- The bootstrap is an asymptotic procedure! 
+
+## A Note About Distributional Assumptions
+
+- Wald-type test-statistic: (parameter estimate - null value)/(standard error)
+- As long as the standard error is "correct" (i.e., consistent), then under suitable regularity conditions the test-statistic follows a standard normal distribution under the null, at least asymptotically
+- Note that we usually do not have have to make distributional assumptions so long as the standard error estimator is consistent (think t-test)
+- For linear regression, in order for the standard error estimates of regression parameters which come from software to be consistent (1) the standard deviation of the residual error must not depend on the covariates (homoskedastic) and (2) model must be correctly specified
+- Sandwich or robust standard errors do not make this assumption; nonparametric bootstrap is a consistent estimator of the robust standard errors
+
+
+## Computational Challenge
+
+- A key challenge of the bootstrap is computational bandwidth
+- Parallel computing can help reduce the computational burden
+- boot package in R allows fast implementation of parallel computing 
+
+## Example IHDP Data
+
+- The Infant Health and Development Program (IHDP) targeted low-birth-weight, premature infants.
+- The study, conducted from 1985-1988, was a randomized trial. The treatment group received intensive high-quality child care and home visits.
+- We are interested in studying only those from the treatment group who were sufficiently compliant with the intervention. This is, of course, a nonrandom subset of the treatment group in the population so there are important prognostic differences among the control group and this subset of treatment.
+- Outcome is child's IQ at 36 months
+- Data source: Hill JL. "Bayesian Nonparametric Modeling for Causal Inference"  Journal of Computational and Graphical Statistics 20(1):217-240 DOI:10.1198/jcgs.2010.08162
+
+
+
+## Summarize Baseline Covariates
+```{r, echo=FALSE, size = "tiny"}
+load("homework1_dataset.Rdata")
+usek <- select(usek, -dose400)
+ihdp <- set_variable_labels(usek, 
+                            iqsb.36 = "IQ at 36 mo.",
+                            treat = "Treatment group",
+                            bw = "Birth weight",
+                            momage = "Mother's age",
+                            nnhealth = "Neo-natal health index",
+                            birth.o = "Birth order",
+                            parity = "Parity",
+                            moreprem = "Premature births",
+                            cigs = "Cigarettes/day",
+                            alcohol = "Drinks/week",
+                            ppvt.imp = "Mother's PPVT score",
+                            female = "Female",
+                            mlt.birtF = "Twins",
+                            b.marryF = "Marital status",
+                            livwhoF = "Living status",
+                            languageF = "Primary language",
+                            whenprenF = "Trimester of pre-natal care",
+                            momed4F = "Mother's education",
+                            momraceF = "Mother's race",
+                            workdur.imp = "Mother's work status"
+)
+print(CreateTableOne(data=ihdp, strata="treat"), varLabels = TRUE, smd = TRUE, test = FALSE)
+```
+
+
+
+## Adjusted Treatment Effect
+
+- Some imbalance among groups for key covariates
+- Could estimate the ATE (causal treatment effect) by fitting a model which adjusts for the other potential confounders. We will only include main effects and linear terms. (NB: we will discuss the merits of this later)
+- We will collapse values of some categorical covariates with small frequencies
+```{r, echo=FALSE}
+ihdp$b.marryaltF <- factor(ifelse(ihdp$b.marry == 1, 1, 2))
+ihdp$languagealtF <- factor(ifelse(ihdp$languageF == 1, 1, 2))
+ihdp$mlt.birtaltF <- factor(ifelse(ihdp$mlt.birtF == 0, 1, 2))
+m1 <- lm(iqsb.36 ~ .  - mlt.birtF - b.marryF - languageF, data=ihdp) 
+```
+
+## Adjusted Treatment Effect
+
+```{r, echo = TRUE, size = "tiny"}
+summary(m1)
+```
+
+## Standard Error of the ATE
+
+- IF we believe that the homoskedastic assumption (and independence), then the standard error that is part of the software output is valid
+- BUT let's estiamte a robust standard error using the bootstrap
+- Demonstrate how to use boot package
+
+## First create function which returns ATE
+
+```{r, echo=TRUE}
+ate.stat <- function(data, indices){
+  data.boot <- data[indices,]
+  
+  m1.boot <- lm(iqsb.36 ~ .  
+    - mlt.birtF - b.marryF - languageF, 
+    data = data.boot)
+  return(coef(m1.boot)[2])
+}
+```
+
+## Call boot package
+
+```{r, echo = TRUE, size = "tiny"}
+set.seed(1101985) # bootstrapping is random - don't forget to set a seed!
+start <- proc.time()
+results <- boot(data=ihdp, statistic=ate.stat, R=1000)
+results; head(results$t)
+proc.time() - start
+```
+
+## Parallelizing with boot
+
+```{r, echo = TRUE, size = "tiny"}
+set.seed(1101985) # bootstrapping is random - don't forget to set a seed!
+start <- proc.time()
+boot(data=ihdp, statistic=ate.stat, R=1000, parallel="multicore", ncpus=2) # on Mac OS
+# boot(data=ihdp, statistic=ate.stat, R=1000, parallel="snow", ncpus=2) # on Windows OS
+proc.time() - start
+```

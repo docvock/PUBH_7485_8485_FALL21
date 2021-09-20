@@ -1,6 +1,6 @@
 ###################################
 # File: ./Lecture_potential_outcomes.R
-#   Purpose: Code needed to compile Lecture_potential_outcomes.R into pdf file
+#   Purpose: Code needed to compile Lecture_potential_outcomes.Rmd into pdf file
 #   Author: David M. Vock
 #   Relies On: ./Lecture_potential_outcomes.Rmd 
 #   Files Created: ./Lecture_potential_outcomes.pdf 

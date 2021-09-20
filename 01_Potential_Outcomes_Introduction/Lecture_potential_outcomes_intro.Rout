@@ -101,4 +101,4 @@ output file: Lecture_potential_outcomes_intro.knit.md
 Output created: Lecture_potential_outcomes_intro.pdf
 > proc.time()
    user  system elapsed 
-  5.994   2.977  16.279 
+  3.827   1.215   9.120 
