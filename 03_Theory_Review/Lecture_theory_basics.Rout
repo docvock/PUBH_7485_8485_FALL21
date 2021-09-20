@@ -1,0 +1,23 @@
+
+
+processing file: Lecture_theory_basics.Rmd
+  |                                                                              |                                                                      |   0%  |                                                                              |.......................                                               |  33%
+  ordinary text without R code
+
+  |                                                                              |...............................................                       |  67%
+label: setup (with options) 
+List of 1
+ $ include: logi FALSE
+
+  |                                                                              |......................................................................| 100%
+  ordinary text without R code
+
+
+output file: Lecture_theory_basics.knit.md
+
+/private/var/folders/f4/nqs_tn8j29l78jxg3nchcb580000gn/T/AppTranslocation/257315EB-9046-4463-A774-7F1BEE25B75E/d/RStudio.app/Contents/MacOS/pandoc/pandoc +RTS -K512m -RTS Lecture_theory_basics.knit.md --to beamer --from markdown+autolink_bare_uris+tex_math_single_backslash --output Lecture_theory_basics.tex --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/latex-div.lua --highlight-style tango --pdf-engine pdflatex --self-contained 
+
+Output created: Lecture_theory_basics.pdf
+> proc.time()
+   user  system elapsed 
+  3.149   1.321   8.836 

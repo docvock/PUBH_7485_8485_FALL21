@@ -17,7 +17,7 @@ FIGDIR= ./figs
 # list R files
 # RFILES := $(wildcard $(RDIR)/*.R)
 # Indicator files to show R file has run
-OUT_FILES:=  $(RDIR)/README.Rout $(RDIR01)/Lecture_potential_outcomes_intro.Rout $(RDIR02)/Rexample_TableOne_SMD.Rout $(RDIR03)/Lecture_bootstrap.Rout
+OUT_FILES:=  $(RDIR)/README.Rout $(RDIR01)/Lecture_potential_outcomes_intro.Rout $(RDIR02)/Rexample_TableOne_SMD.Rout $(RDIR03)/Lecture_bootstrap.Rout $(RDIR03)/Lecture_theory_basics.Rout
 
 all: $(OUT_FILES)
 
@@ -32,7 +32,10 @@ $(RDIR02)/Rexample_TableOne_SMD.Rout: $(RDIR02)/Rexample_TableOne_SMD.R $(RDIR02
 	R CMD BATCH --slave --vanilla $(RDIR02)/Rexample_TableOne_SMD.R $(RDIR02)/Rexample_TableOne_SMD.Rout	
 
 $(RDIR03)/Lecture_bootstrap.Rout: $(RDIR03)/Lecture_bootstrap.R $(RDIR03)/Lecture_bootstrap.Rmd 
-	R CMD BATCH --slave --vanilla $(RDIR03)/Lecture_bootstrap.R $(RDIR03)/Lecture_bootstrap.Rout	
+	R CMD BATCH --slave --vanilla $(RDIR03)/Lecture_bootstrap.R $(RDIR03)/Lecture_bootstrap.Rout
+	
+$(RDIR03)/Lecture_theory_basics.Rout: $(RDIR03)/Lecture_theory_basics.R $(RDIR03)/Lecture_theory_basics.Rmd 
+	R CMD BATCH --slave --vanilla $(RDIR03)/Lecture_theory_basics.R $(RDIR03)/Lecture_theory_basics.Rout
 
 # Clean up stray files
 #clean:
