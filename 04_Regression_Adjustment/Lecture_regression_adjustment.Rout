@@ -1,0 +1,137 @@
+
+
+processing file: Lecture_regression_adjustment.Rmd
+  |                                                                              |                                                                      |   0%  |                                                                              |...                                                                   |   4%
+  ordinary text without R code
+
+  |                                                                              |.....                                                                 |   7%
+label: setup (with options) 
+List of 1
+ $ include: logi FALSE
+
+  |                                                                              |........                                                              |  11%
+  ordinary text without R code
+
+  |                                                                              |..........                                                            |  15%
+label: unnamed-chunk-1 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.............                                                         |  19%
+  ordinary text without R code
+
+  |                                                                              |................                                                      |  22%
+label: unnamed-chunk-2 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |..................                                                    |  26%
+  ordinary text without R code
+
+  |                                                                              |.....................                                                 |  30%
+label: unnamed-chunk-3 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.......................                                               |  33%
+  ordinary text without R code
+
+  |                                                                              |..........................                                            |  37%
+label: unnamed-chunk-4 (with options) 
+List of 3
+ $ echo   : logi TRUE
+ $ warning: logi FALSE
+ $ include: logi FALSE
+
+  |                                                                              |.............................                                         |  41%
+  ordinary text without R code
+
+  |                                                                              |...............................                                       |  44%
+label: unnamed-chunk-5 (with options) 
+List of 3
+ $ echo   : logi FALSE
+ $ warning: logi FALSE
+ $ include: logi FALSE
+
+  |                                                                              |..................................                                    |  48%
+  ordinary text without R code
+
+  |                                                                              |....................................                                  |  52%
+label: unnamed-chunk-6 (with options) 
+List of 3
+ $ echo   : logi TRUE
+ $ warning: logi FALSE
+ $ results: chr "hide"
+
+  |                                                                              |.......................................                               |  56%
+  ordinary text without R code
+
+  |                                                                              |.........................................                             |  59%
+label: unnamed-chunk-7 (with options) 
+List of 4
+ $ echo   : logi TRUE
+ $ warning: logi FALSE
+ $ size   : chr "tiny"
+ $ results: chr "asis"
+
+  |                                                                              |............................................                          |  63%
+  ordinary text without R code
+
+  |                                                                              |...............................................                       |  67%
+label: unnamed-chunk-8 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.................................................                     |  70%
+  ordinary text without R code
+
+  |                                                                              |....................................................                  |  74%
+label: unnamed-chunk-9 (with options) 
+List of 3
+ $ echo   : logi TRUE
+ $ warning: logi FALSE
+ $ cache  : logi TRUE
+
+  |                                                                              |......................................................                |  78%
+  ordinary text without R code
+
+  |                                                                              |.........................................................             |  81%
+label: unnamed-chunk-10 (with options) 
+List of 2
+ $ echo : logi TRUE
+ $ cache: logi TRUE
+
+  |                                                                              |............................................................          |  85%
+  ordinary text without R code
+
+  |                                                                              |..............................................................        |  89%
+label: unnamed-chunk-11 (with options) 
+List of 2
+ $ echo : logi TRUE
+ $ cache: logi TRUE
+
+  |                                                                              |.................................................................     |  93%
+  ordinary text without R code
+
+  |                                                                              |...................................................................   |  96%
+label: unnamed-chunk-12 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |......................................................................| 100%
+  ordinary text without R code
+
+
+output file: Lecture_regression_adjustment.knit.md
+
+/private/var/folders/f4/nqs_tn8j29l78jxg3nchcb580000gn/T/AppTranslocation/FAF05EC1-8897-4CC7-8A9D-AB36C6218F5B/d/RStudio.app/Contents/MacOS/pandoc/pandoc +RTS -K512m -RTS Lecture_regression_adjustment.knit.md --to beamer --from markdown+autolink_bare_uris+tex_math_single_backslash --output Lecture_regression_adjustment.tex --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/latex-div.lua --highlight-style tango --pdf-engine pdflatex --self-contained 
+
+Output created: Lecture_regression_adjustment.pdf
+> proc.time()
+   user  system elapsed 
+ 27.975   5.169  43.734 

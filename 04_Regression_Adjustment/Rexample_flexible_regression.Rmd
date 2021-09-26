@@ -1,0 +1,713 @@
+---
+title: "Flexible Regression Models"
+author: "David M. Vock"
+date: "PubH 7485/8485"
+output: beamer_presentation
+theme: "Boadilla"
+colortheme: "whale"
+fonttheme: "structurebold"
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+source("Rexample_flexible_regression_library.R")
+```
+
+## Example IHDP Data
+
+- The Infant Health and Development Program (IHDP) targeted low-birth-weight, premature infants.
+- The study, conducted from 1985-1988, was a randomized trial. The treatment group received intensive high-quality child care and home visits.
+- We are interested in studying only those from the treatment group who were sufficiently compliant with the intervention. This is, of course, a nonrandom subset of the treatment group in the population so there are important prognostic differences among the control group and this subset of treatment.
+- Outcome is child's IQ at 36 months
+- Data source: Hill JL. "Bayesian Nonparametric Modeling for Causal Inference"  Journal of Computational and Graphical Statistics 20(1):217-240 DOI:10.1198/jcgs.2010.08162
+
+
+
+## Summarize Baseline Covariates
+```{r, echo=FALSE, size = "tiny"}
+load("homework1_dataset.Rdata")
+usek <- select(usek, -dose400)
+ihdp <- set_variable_labels(usek, 
+                            iqsb.36 = "IQ at 36 mo.",
+                            treat = "Treatment group",
+                            bw = "Birth weight",
+                            momage = "Mother's age",
+                            nnhealth = "Neo-natal health index",
+                            birth.o = "Birth order",
+                            parity = "Parity",
+                            moreprem = "Previous premature births",
+                            cigs = "Cigarettes/day",
+                            alcohol = "Drinks/week",
+                            ppvt.imp = "Mother's PPVT score",
+                            female = "Female",
+                            mlt.birtF = "Twins",
+                            b.marryF = "Marital status",
+                            livwhoF = "Living status",
+                            languageF = "Primary language",
+                            whenprenF = "Trimester of pre-natal care",
+                            momed4F = "Mother's education",
+                            momraceF = "Mother's race",
+                            workdur.imp = "Mother's work status"
+)
+print(CreateTableOne(data=ihdp, strata="treat"), varLabels = TRUE, smd = TRUE, test = FALSE, missing = TRUE)
+```
+
+## Unadjusted (Associational) Treatment Effect
+
+```{r, echo=FALSE, size = "tiny"}
+ATE <- mean(ihdp$iqsb.36[ihdp$treat == 1]) - mean(ihdp$iqsb.36[ihdp$treat == 0])
+SE <- sd(ihdp$iqsb.36[ihdp$treat == 1])/sqrt(sum(ihdp$treat)) + sd(ihdp$iqsb.36[ihdp$treat == 0])/sqrt(sum(1-ihdp$treat))
+LB <- ATE - qnorm(0.975)*SE
+UB <- ATE + qnorm(0.975)*SE
+estimator_name <- c("Unadjusted Analysis")
+print(paste0("ATE (SE) = ", round(ATE, 1), " (", round(SE, 1), ")"))
+print(paste0("95% CI: ", round(LB, 1), ", ", round(UB, 1)))
+```
+
+## Adjusted Treatment Effect
+
+- Some imbalance among groups for key covariates
+- Could estimate the ATE (causal treatment effect) by fitting a model which adjusts for the other potential confounders. We will only include main effects and linear terms. (NB: we will discuss the merits of this later)
+- We will collapse values of some categorical covariates with small frequencies
+```{r, echo=FALSE}
+ihdp$b.marryaltF <- factor(ifelse(ihdp$b.marry == 1, 1, 2))
+ihdp$languagealtF <- factor(ifelse(ihdp$languageF == 1, 1, 2))
+ihdp$mlt.birtaltF <- factor(ifelse(ihdp$mlt.birtF == 0, 1, 2))
+m1 <- lm(iqsb.36 ~ .  - mlt.birtF - b.marryF - languageF, data=ihdp) 
+```
+
+## Adjusted Treatment Effect
+
+```{r, echo = TRUE, size = "tiny"}
+summary(m1)
+```
+
+## Standard Error of the ATE
+
+- IF we believe that the homoskedastic assumption (and independence), then the standard error that is part of the software output is valid
+- BUT let's estiamte a robust standard error using the bootstrap
+- Demonstrate how to use boot package
+
+## First create function which returns ATE
+
+```{r, echo=TRUE}
+ate.stat <- function(data, indices){
+  data.boot <- data[indices,]
+  
+  m1.boot <- lm(iqsb.36 ~ .  
+    - mlt.birtF - b.marryF - languageF, 
+    data = data.boot)
+  return(coef(m1.boot)[2])
+}
+```
+
+## Call boot package
+
+```{r, echo = TRUE, size = "tiny"}
+set.seed(1101985) # bootstrapping is random - don't forget to set a seed!
+boot.results <- boot(data=ihdp, statistic=ate.stat, R=1000, parallel="multicore", ncpus=8) # on Mac OS
+# boot(data=ihdp, statistic=ate.stat, R=1000, parallel="snow", ncpus=2) # on Windows OS
+boot.results ; #head(boot.results$t)
+# store results in matrix
+ATE <- c(ATE, m1$coefficients[2]); SE <- c(SE, sd(boot.results$t))
+LB <- c(LB, sort(boot.results$t)[25]); UB <- c(UB, sort(boot.results$t)[975])
+estimator_name <- c(estimator_name, "Main Effects, Linear Only")
+print(paste0("ATE (SE) = ", round(ATE[2], 1), " (", round(SE[2], 1), ")"))
+print(paste0("95% CI:", round(LB[2], 1), ", ", round(UB[2], 1)))
+```
+
+## Model mispsecification
+
+- Proposed framework is dependent on getting the "right" regression model for the outcome
+- The initial model proposed here is somewhat limiting (only linear main effcts)
+- May want to examine more flexible approaches
+- We will summarize a handful of different ideas and their practical implementation in R; this is not meant to be comprehensive 
+
+## Diagnosisng Nonlinear Relationships
+
+- In (multiple) linear regression, we typically assume that the response is linearly related to the covariates
+- Diagnose departures from normality using scatter plot of covariate and response or residual plot 
+- Plots may be uninformative as we shall see shortly
+
+## Example Dataset
+
+- Ozone level (ppb) in New York City measured daily from May to September in 1973
+- Covariates include Wind (mph), Temperature (F), Solar radiation (Langley), and calendar day
+- 153 calendar days included
+- Focus on relationship between Wind and Ozone
+
+## Scatter Plot of Data
+
+```{r, echo = FALSE}
+data(airquality)
+attach(airquality)
+plot(Wind, Ozone)
+```
+
+
+## Residual Plot from Fitting a Linear Model
+
+```{r, echo = FALSE}
+model1 <- lm(Ozone ~ Wind)
+plot(model1, which = 1)
+```
+
+
+## What to Do?
+
+- Clearly a linear relationship is not sufficient to capture the relationship between wind and ozone
+- Standard approaches to handle nonlinear relationships would include incorporating a quadratic terms or transforming the response/predictor
+- Quadratic fit may be inadequate: How many polynomial terms should we include (e.g., cubic, quartic, etc.)?
+- The challenge with very high order polynomials is that they tend to be rather ``wiggly'' and have unusual tail behavior.
+
+## Quadratic Fit
+
+```{r, echo = FALSE}
+model2 <- lm(Ozone ~ Wind + I(Wind^2))
+Wind.na <- Wind[is.na(Ozone) == FALSE]
+plot(Wind, Ozone)
+lines(Wind.na[order(Wind.na)], predict(model2)[order(Wind.na)])
+```
+
+
+## Cubic Fit
+
+```{r, echo = FALSE}
+model3 <- lm(Ozone ~ Wind + I(Wind^2) + I(Wind^3))
+Wind.na <- Wind[is.na(Ozone) == FALSE]
+plot(Wind, Ozone)
+lines(Wind.na[order(Wind.na)], predict(model3)[order(Wind.na)])
+```
+
+
+## Key Citation and Warning
+
+- Harrell, F.E. (2015) "Regression Modeling Strategies: With Applications to Linear Models. Logistic Regression, and Survival Models." 2nd Ed. Springer
+- The discussion today will be highly applied based on my experience in collaborative settings 
+- Prioritize practicability (i.e., getting a good answer now over a perfect one in a month) over mathematical elegance
+
+
+## (Draftman) Splines
+
+- From Wikipedia
+- Consists of a long strip fixed in position at a number of points that relaxes to form and hold a smooth curve passing through those points for the purpose of transferring that curve to another material
+-  Used for creating engineering designs
+- The splines were held in place with lead weights. The elasticity of the spline material combined with the constraint of the control points, or knots, would cause the strip to take the shape that minimized the energy required for bending it between the fixed points, this being the smoothest possible shape
+
+## (Draftman) Splines
+
+\begin{figure}
+\includegraphics{fig83_01.jpg}
+\end{figure}
+
+## Linear Splines
+
+- We could allow the linear function to change at a certain point. 
+- Of course this model is unreasonable (not continuous)
+- A slightly more reasonable model  would allow the slope to change at a specific point but ensure continuity. How many parameters are in this model?
+- The change point is known as a "knot"
+- Although we want to allow the slope to change we still want the function to be continuous
+- We will eventually consider more sophisticated functions besides piecewise linear
+- Assume that the location of the knot point is fixed (i.e., known, not estimated) by the analyst
+
+## Graph of Linear Spline with Single Knot
+
+```{r, echo = FALSE}
+Wind.seq <- 0:25
+pred.Ozone <- 150 +  -12.5*Wind.seq + 10*pmax(0, Wind.seq - 10)
+plot(Wind.seq, pred.Ozone, type = "l", xlab = "Wind", ylab = "Ozone", xlim = c(0, 20))
+points(c(10), c(25), pch = 19, col = "red", cex = 5)
+```
+
+
+## Single Knot - Parameterization
+
+- Of course we want to find the linear spline function which bests fit the data
+- What are the three parameters that we must estimate in this model?
+
+## Single Knot - Parameterization
+
+- Let $X$ be the covariate of interest (Wind speed here) and $Y$ the response of interest (Ozone) and $s$ the knot point
+- We can estimate the best linear spline model by fitting a usual multiple regression model with covariates $X$ and $\max (0, X - s)$
+- Note that $\max (0, Z)$ is often denoted by $Z_+$
+- The model we are fitting is  $Y_i = \beta_0 + \beta_1 X_i + \beta_2 (X - k_1)_+ + \epsilon_i$ where $\epsilon_i \stackrel{iid}{\sim} N(0, \sigma^2)$
+- Note that $\beta_2$ is the difference in slopes and $\beta_1$ is the slope for values of $X$ less than the knot
+
+## Single Knot - Parameterization R Code
+
+```{r, echo = TRUE}
+knot.pt <- 10
+Wind.s1 <- pmax(Wind - knot.pt, 0)
+```
+
+
+## Single Knot - Model Output
+
+```{r, echo = FALSE}
+model_ls <- lm(Ozone ~ Wind + Wind.s1)
+print(summary(model_ls)[[4]], digits = 4)
+```
+
+Note that the slope after 10 mph is -11.63 + 11.09 = -0.54
+
+## Single Knot - Model Interpretation
+
+The average ozone level in NYC declines 11.63 ppb for every one mile per hour increase in the wind speed up to 10 mph. After 10 mph, the relationship between wind speed and ozone is dramatically attenuated; the average ozone level only declines 0.54 ppb for each one mph increase in wind speed after 10 mph. 
+
+## Standard Errors/Confidence Intervals
+
+- Once we know the standard error, how can we calculate a 95% CI for the parameter?
+- The standard error for $\hat{\beta}_1$ can be read off the table. How could we get the standard error for $\hat{\beta}_1 + \hat{\beta}_2$, our estimate of the slope after 10 mph?
+
+## Standard Errors/Confidence Intervals
+
+- Standard error for $\hat{\beta}_1 + \hat{\beta}_2$
+```{r, echo = TRUE}
+se.part2 <- sqrt(vcov(model_ls)[2, 2] + vcov(model_ls)[3, 3] + 2*vcov(model_ls)[2,3])
+print(se.part2, digits = 3)
+```
+- Confidence interval $\beta_1$
+```{r, echo = FALSE}
+CI <- c(coef(model_ls)[2] - qnorm(0.975)*sqrt(vcov(model_ls)[2, 2]), 
+  coef(model_ls)[2] + qnorm(0.975)*sqrt(vcov(model_ls)[2, 2]) )
+print(CI, digits = 4)
+```
+- Confidence interval $\beta_1+\beta_2$
+```{r, echo = FALSE}
+CI <- c(coef(model_ls)[2]+coef(model_ls)[3] - qnorm(0.975)*se.part2, 
+  coef(model_ls)[2]+coef(model_ls)[3] + qnorm(0.975)*se.part2 )
+print(CI, digits = 4)
+```
+
+## Single Knot - Testing if the Spline is Necessary
+
+- A test of whether or not $\beta_2$ is significantly different from zero is a test for whether or not the relationship between wind and ozone is significantly nonlinear
+- Here we have substantial evidence that the relationship between ozone and wind is nonlinear and changes at 10 mph (p < 0.001)
+
+## Multiple Knot Points - Paremetrization
+
+- No reason why we couldn't allow the slope to change at multiple points 
+- For an arbitrary number of knot points $(s_1, \ldots, s_K)$ we would fit a multiple linear regression model - what should the covariates be in this case?
+- Note the number of additional covariates (beyond those needed for a linear model) is equal to $K$
+
+## Multiple Knot Points - Output
+
+- Fit a model with knot points at 7.5 mph and 15 mph. Interpret this model
+```{r, echo = FALSE}
+Wind.s1 <- pmax(0, Wind - 7.5)
+Wind.s2 <- pmax(0, Wind - 15)
+model_ls2 <- lm(Ozone ~ Wind + Wind.s1 + Wind.s2)
+print(summary(model_ls2)[[4]], digits = 4)
+```
+
+
+## Multiple Knot Points - Selection 
+
+- Until know I've been pretty careless about how to pick knot points
+- How might you compare the model with one knot point as compared to two know points?
+- How would you compare two models with the same knot points but with different locations?
+
+## Multiple Knot Points - Testing if the Spline is Necessary
+
+- Test of whether or not the relationship between ozone and wind speed is linear is equivalent to testing whether or not $\beta_2 = 0$ and $\beta_3 = 0$ simultaneously
+- This is a composite hypothesis test not two simultaneous tests
+```{r, echo = TRUE}
+model_lin <- lm(Ozone ~ Wind)
+anova(model_lin, model_ls2)
+```
+
+
+## Robert Frost: Mending Wall
+
+- Something there is that doesn't love a wall
+- Good fences make good neighbors
+
+
+## Robert Frost: Mending Wall Applied to Splines
+
+- Something there is that doesn't love a smooth function
+- (Piecewise) Linear functions make good and interpretable models 
+
+## Cubic Splines: Intro
+
+- Idea is that a cubic function is fairly flexible but we want the cubic function to be allowed to change at different knot points
+- How many parameters must we fit to determine a cubic function? If we have 4 different knot points how many parameters is that? (HINT: way too many)
+- To reduce the number of parameters we need to estimate we impose some restrictions just as we did with the linear spline model. Specifically we assume that 
+1) The function is continuous
+2) The first derivative is continuous
+3) The second derivative is continuous
+4) The function is linear outside the end knot points
+- Known as a restricted cubic spline model
+
+## Cubic Splines Parameterization
+
+- Don't all those restrictions make this impossible to work with? Surprisingly, no!
+- Only require $K-2$ additional covariates (beyond a linear model) to fit this restricted cubic spline model 
+- That is, we assume $Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \ldots \beta_{K-1}X_{K-1} +\epsilon$ where $X_1 = X$ and $X_{j+1} = (X - s_j)^3_{+} -(X-s_{K-1})^3_{+}(s_K-s_j)/(s_K-s_{K-1}) +(X-s_K)^3_{+}(s_{K-1}-s_j)/(s_K-s_{K-1})$
+
+
+## Cubic Splines in the rms package
+- Isn't this a lot of coding? Yes, but luckily the rms package takes care of this for us.
+- Here the knot locations are specified using the quantiles of the distribution
+
+```{r, echo = TRUE, results="hide", message=FALSE}
+library(rms)
+model_rms <- ols(Ozone ~ rcs(Wind, 5), data = airquality)
+```
+
+## Cubic Splines - Choosing the Number of Knot Points
+
+- Pertinent question throughout is how to choose the number and location of the knot points
+- Larger number of knot points: greater flexibility but we risk overfitting the data
+- If we let the number of knot points be large then we really need to control for overfitting using some form of variable selection or coefficient shrinkage
+- Need to do that smartly - actually want to control the "wiggliness" of the nonlinear function which may not be controlled by setting some coefficients equal to zero
+- Most simulation studies have shown that 4 or 5 knot points is sufficient to model most nonlinear relationships
+
+## Cubic Splines - Choosing the Location of Knot Points
+
+- In the absence of strong subject-area prior knowledge on the functional form of the covariate typically choose knot points based on the percentiles of the covariate distribution
+- Typically the smallest and largest knot points are the $5^{th}$ and $95^{th}$ percentile of the distribution
+- "Interior"" knots are equally spaced percentiles
+- For 5 knot points the knots would be chosen using the $5^{th}$, $27.5^{th}$, $50^{th}$, $72.5^{th}$,  and $95^{th}$ percentiles or the covariates
+- For 4 knot points the knots would be chosen using the $5^{th}$, $35^{th}$, $65^{th}$,  and $95^{th}$ percentiles or the covariates 
+- This is the default in the rms package. Second argument gives number of knot points 
+ 
+
+## Cubic Splines Output
+
+```{r, echo = TRUE}
+model_rms$coef
+```
+
+## Cubic Splines Interpretation
+
+- Impossible to interpret the actual coefficients of the model
+- In some cases if we are just adjusting for this covariate in a multivariable model, the interpretability doesn't matter. THIS IS THE CASE FOR OUTCOME REGRESSION MODELS IN CAUSAL INFERENCE
+- One possibility is to present a graphical representation of the relationship between the covariate and the outcome (e.g., plot predicted value versus the covariate)
+- But graphical representations are difficult to summarize in say an abstract
+
+## Cubic Splines Output - Graph
+
+```{r, echo = TRUE}
+plot(Wind, predict(model_rms))
+```
+
+## Cubic Splines - Tesing if the Relationship is Nonlinear
+
+- A test of whether or not the relationship between wind speed and ozone is nonlinear is fairly interpretable but doesn't tell us much more
+- A limitation here is that we have not accounted for the fact that the knot points were not chosen a priori. 
+```{r, echo = TRUE}
+anova(model_rms) 
+```
+
+
+
+
+## IHDP Data Set
+
+- Fit a main effects model as before but use restricted cubic splines with 4 knot points for the continuous factors
+- We are going to punt on the question of variable selection for now (both for the nonlinear terms and main effects)
+- Consider including interaction terms once we have discussed variable selection 
+
+## Adjusted Treatment Effect with RCS
+
+```{r, echo=TRUE}
+m4 <- lm(iqsb.36 ~ treat +
+    rcs(bw, 4) + rcs(momage, 4) + rcs(nnhealth, 4) + rcs(ppvt.imp, 4) + 
+    birth.o + parity + moreprem + cigs + alcohol +  
+    female + mlt.birtaltF + b.marryaltF + livwhoF + languagealtF + whenprenF + 
+    momed4F + momraceF + workdur.imp, data=ihdp) 
+```
+
+## Adjusted Treatment Effect with RCS
+
+```{r, echo = TRUE, size = "tiny"}
+summary(m4)
+```
+
+## Adjusted Treatment Effect with RCS
+
+```{r, echo = TRUE, size = "tiny"}
+m4alt <- ols(iqsb.36 ~ treat +
+    rcs(bw, 4) + rcs(momage, 4) + rcs(nnhealth, 4) + rcs(ppvt.imp, 4) + 
+    birth.o + parity + moreprem + cigs + alcohol +  
+    female + mlt.birtaltF + b.marryaltF + livwhoF + languagealtF + whenprenF + 
+    momed4F + momraceF + workdur.imp, data=ihdp) 
+anova(m4alt)
+``` 
+
+## Adjusted Treatment Effect with RCS Summary
+
+- Use bootstrap SE as with linear main effects model
+
+```{r, echo=FALSE}
+ate.stat.rcs <- function(data, indices){
+  data.boot <- data[indices,]
+  
+  m4.boot <- lm(iqsb.36 ~ treat +
+    rcs(bw, 4) + rcs(momage, 4) + rcs(nnhealth, 4) + rcs(ppvt.imp, 4) + 
+    birth.o + parity + moreprem + cigs + alcohol +  
+    female + mlt.birtaltF + b.marryaltF + livwhoF + languagealtF + whenprenF + 
+    momed4F + momraceF + workdur.imp, data=data.boot) 
+  return(coef(m4.boot)[2])
+}
+```
+
+## Call boot package
+
+```{r, echo = TRUE, size = "tiny"}
+set.seed(1101985) # bootstrapping is random - don't forget to set a seed!
+boot.results <- boot(data=ihdp, statistic=ate.stat.rcs, R=1000, parallel="multicore", ncpus=8) # on Mac OS
+# boot(data=ihdp, statistic=ate.stat, R=1000, parallel="snow", ncpus=2) # on Windows OS
+boot.results ; #head(boot.results$t)
+# store results in matrix
+ATE <- c(ATE, m4$coefficients[2]); SE <- c(SE, sd(boot.results$t))
+LB <- c(LB, sort(boot.results$t)[25]); UB <- c(UB, sort(boot.results$t)[975])
+estimator_name <- c(estimator_name, "Main Effects, RCS")
+print(paste0("ATE (SE) = ", round(ATE[3], 1), " (", round(SE[3], 1), ")"))
+print(paste0("95% CI:", round(LB[3], 1), ", ", round(UB[3], 1)))
+```
+
+## Classification and Regression Trees 
+- Classification and Regression Trees (CART) were originally introduced by Leo Breiman in 1984. 
+- It remains one of the most popular machine learning algorithms because of its simplicity and interpretability. 
+- The main idea of CART is that we are trying to approximate any function $f(x)$ by a piecewise constant $\hat{f}(x)$ using recursive partitioning. 
+- More simply, the goal is to create a model that predicts the value of a target variable based on several input variables.
+
+## Building a Classfication Tree 
+- Here, we are using the packages "rpart" and "rpart.plot" to produce a regression tree:
+```{r, fig.height=3, echo = TRUE, size = "tiny"}
+fit <- rpart(iqsb.36 ~ ., 
+  data = ihdp[, -which(colnames(ihdp) %in% c("mlt.birtF", "b.marryF", "languageF"))],
+  method = "anova")
+rpart.plot(fit)
+```
+
+- Note: method = "anova" is used here for a regression tree. The complexity parameter "cp" is used to control how far to grow the tree.
+
+
+## Using Single Trees 
+- If we use 600/628 observations, and build the regression tree the same way as previously:
+```{r, fig.height=3}
+new.dat <- ihdp[1:600,]
+fit <- rpart(iqsb.36~., 
+  data = new.dat[, -which(colnames(ihdp) %in% c("mlt.birtF", "b.marryF", "languageF"))],
+  method = "anova")
+rpart.plot(fit)
+```
+
+- The variable "treat" became a split in the tree to the right, and we now have fewer terminal nodes
+
+## Random Forest 
+- Often times, using a single tree as a model can be unstable and give weak predictions. An easy way to improve on the prediction accuracy is to use multiple version of it to form a final classifier; this is the logic behind ensemble learning methods. 
+- Random Forest is an ensemble learning method proposed by Leo Breiman in 2001. 
+- The main idea behind Random Forest: 
+
+  1. Take sample with replacement of size "n" from the original dataset (bootstraped sample)
+  2. Grow a tree but at each possible split select only a subset of variables to possibly split on ($p/3$ for regression and $\sqrt{p}$ for classification). Typically grow bigger trees than we would for a single tree
+  3. Repeat steps 1 and 2 many times (~1,000). The collection of trees is called a forest.
+  4. Decide a final predicted outcome by combining the results across all of the trees (an average in regression)
+
+## Random Forest 
+
+- Lot's of different software implementations in R for random forests including randomforestSRC, randomForest, ranger
+- Will focus on using the ranger package; this pacakge does not have great graphics internally so we will use the pdp package to supplement
+
+## Random Forest implementation
+
+- Variable importance measures the variance of the responses for regression
+```{r, echo=FALSE, size = "tiny", fig.height=3, }
+m2 <- ranger(iqsb.36 ~ .  - mlt.birtF - b.marryF - languageF, data=ihdp, 
+  importance = "impurity", seed = 110985) 
+vip(m2, geom = "point") 
+#m2$variable.importance
+```
+
+## Partial dependence plot
+
+- Heuristically, the partial dependence plots examine how the expected response changes as a function of a predictor, holding all other predictors constant
+
+```{r, echo = FALSE, fig.height=3, warning = FALSE, message=FALSE}
+p1 <- m2 %>%  # the %>% operator is read as "and then"
+  partial(pred.var = "ppvt.imp") %>%
+  autoplot(smooth = TRUE, ylab = "Expected IQ") +
+  theme_light() +
+  ggtitle("Mother's PPVT score") + ylim(81, 94)
+
+p2 <- m2 %>%  # the %>% operator is read as "and then"
+  partial(pred.var = "momraceF") %>%
+  autoplot(smooth = TRUE, ylab = "Expected IQ") +
+  theme_light() +
+  ggtitle("Mother's Race/Ethnicity") + ylim(81, 94)
+
+p3 <- m2 %>%  # the %>% operator is read as "and then"
+  partial(pred.var = "momed4F") %>%
+  autoplot(smooth = TRUE, ylab = "Expected IQ") +
+  theme_light() +
+  ggtitle("Mother's Education Level") + ylim(81, 94)
+
+grid.arrange(p1, p2, p3, ncol = 3)  
+```  
+
+## Partial dependence plot
+
+- Heuristically, the partial dependence plots examine how the expected response changes as a function of a predictor, holding all other predictors constant
+
+```{r, echo = FALSE, fig.height=3, warning = FALSE, message=FALSE}
+p1 <- m2 %>%  # the %>% operator is read as "and then"
+  partial(pred.var = "bw") %>%
+  autoplot(smooth = TRUE, ylab = "Expected IQ") +
+  theme_light() +
+  ggtitle("Birthweight (g)") + ylim(81, 94)
+
+p2 <- m2 %>%  # the %>% operator is read as "and then"
+  partial(pred.var = "nnhealth") %>%
+  autoplot(smooth = TRUE, ylab = "Expected IQ") +
+  theme_light() +
+  ggtitle("Neonatal Health") + ylim(81, 94)
+
+p3 <- m2 %>%  # the %>% operator is read as "and then"
+  partial(pred.var = "momage") %>%
+  autoplot(smooth = TRUE, ylab = "Expected IQ") +
+  theme_light() +
+  ggtitle("Mother's Age") + ylim(81, 94)
+
+grid.arrange(p1, p2, p3, ncol = 3)  
+```  
+
+## Obtain Predicted Value For Treatment/Control Group
+
+- Note: should use out-of-bag (oob) estimates for those who actually received treatment level of interest 
+
+```{r, echo = TRUE, size = "tiny"}
+ihdp1 <- ihdp0 <- ihdp
+ihdp1$treat <- 1; ihdp0$treat <- 0
+pred1 <- predict(m2, data = ihdp1)$predictions
+pred1[ihdp$treat == 1] <- m2$predictions[ihdp$treat == 1]
+pred0 <- predict(m2, data = ihdp0)$predictions
+pred0[ihdp$treat == 0] <- m2$predictions[ihdp$treat == 0]
+```
+
+## Esimate of ATE
+
+```{r, echo = TRUE}
+mean(pred1) - mean(pred0)
+```
+
+## Use Bootstrap to Obtain Standard Error Estimates
+
+- First, create function to return ATE
+
+```{r, echo = TRUE, size = "tiny"}
+ate.rf <- function(data, freq){
+  m2.boot <- ranger(iqsb.36 ~ .  - mlt.birtF - b.marryF - languageF, data=data, 
+  case.weights = freq, seed = 1101985) 
+  
+  data1 <- data0 <- data
+  data1$treat <- 1; data0$treat <- 0
+  pred1 <- as.vector(predict(m2.boot, data = data1)$predictions)
+  pred1[data$treat == 1] <- as.vector(m2.boot$predictions)[data$treat == 1]
+  pred0 <- as.vector(predict(m2.boot, data = data0)$predictions)
+  pred0[data$treat == 0] <- as.vector(m2.boot$predictions)[data$treat == 0]
+  ate.rf <- weighted.mean(pred1, w = freq, na.rm = TRUE) - 
+    weighted.mean(pred0, w = freq, na.rm = TRUE)
+  #return(c(m2.boot$predictions, pred1, pred0, freq))
+  return(ate.rf)
+}
+```
+
+## Parallelizing with boot
+
+```{r, echo = TRUE, size = "tiny", cache = TRUE}
+set.seed(1101985) # bootstrapping is random - don't forget to set a seed!
+start <- proc.time()
+boot.results <- boot(data=ihdp, statistic=ate.rf, R = 1000, 
+  stype = "f", parallel="multicore", ncpus=8) # on Mac OS
+proc.time() - start
+boot.results
+```
+
+## Results Summary
+```{r, echo = FALSE}
+# store results in matrix
+ATE <- c(ATE, mean(pred1) - mean(pred0)); SE <- c(SE, sd(boot.results$t))
+LB <- c(LB, sort(boot.results$t)[25]); UB <- c(UB, sort(boot.results$t)[975])
+estimator_name <- c(estimator_name, "Random Forest")
+print(paste0("ATE (SE) = ", round(ATE[4], 1), " (", round(SE[4], 1), ")"))
+print(paste0("95% CI (", round(LB[4], 1), ", ", round(UB[4], 1), ")"))
+```
+
+## Random Forest Part 2
+
+- Some researchers have argued that should fit separate random forests in the treatment and control groups
+- Effectively this is the same as splitting on treatment first
+- May not be wise when one group (treat = 1 here) is fairly small
+
+```{r, echo=FALSE, cache=TRUE }
+m3.trt <- ranger(iqsb.36 ~ .  - mlt.birtF - b.marryF - languageF, 
+  data=ihdp[which(ihdp$treat == 1), ], seed = 110985) 
+m3.ctr <- ranger(iqsb.36 ~ .  - mlt.birtF - b.marryF - languageF, 
+  data=ihdp[which(ihdp$treat == 0), ], seed = 110985) 
+pred1 <- predict(m3.trt, data = ihdp1)$predictions
+pred1[ihdp$treat == 1] <- m3.trt$predictions
+pred0 <- predict(m3.ctr, data = ihdp0)$predictions
+pred0[ihdp$treat == 0] <- m3.ctr$predictions
+
+ate.rf.split <- function(data, freq){
+  m3.trt.boot <- ranger(iqsb.36 ~ .  - mlt.birtF - b.marryF - languageF, 
+    data=data[which(data$treat == 1), ], 
+  case.weights = freq[which(data$treat == 1)], seed = 1101985) 
+  m3.ctr.boot <- ranger(iqsb.36 ~ .  - mlt.birtF - b.marryF - languageF, 
+    data=data[which(data$treat == 0), ], 
+  case.weights = freq[which(data$treat == 0)], seed = 1101985) 
+  
+  data1 <- data0 <- data
+  data1$treat <- 1; data0$treat <- 0
+  pred1 <- as.vector(predict(m3.trt.boot, data = data1)$predictions)
+  pred1[data$treat == 1] <- as.vector(m3.trt.boot$predictions)
+  pred0 <- as.vector(predict(m3.ctr.boot, data = data0)$predictions)
+  pred0[data$treat == 0] <- as.vector(m3.ctr.boot$predictions)
+  ate.rf.split <- weighted.mean(pred1, w = freq, na.rm = TRUE) - 
+    weighted.mean(pred0, w = freq, na.rm = TRUE)
+  #return(c(m2.boot$predictions, pred1, pred0, freq))
+  return(ate.rf.split)
+}
+
+set.seed(1101985) # bootstrapping is random - don't forget to set a seed!
+#start <- proc.time()
+boot.results <- boot(data=ihdp, statistic=ate.rf.split, R = 1000, 
+  stype = "f", parallel="multicore", ncpus=8) # on Mac OS
+#proc.time() - start
+
+ATE <- c(ATE, mean(pred1) - mean(pred0)); SE <- c(SE, sd(boot.results$t))
+LB <- c(LB, sort(boot.results$t)[25]); UB <- c(UB, sort(boot.results$t)[975])
+estimator_name <- c(estimator_name, "Random Forest; Separate Models")
+print(paste0("ATE (SE) = ", round(ATE[5], 1), " (", round(SE[5], 1), ")"))
+print(paste0("95% CI (", round(LB[5], 1), ", ", round(UB[5], 1), ")"))
+```
+
+## Putting it All Together
+
+```{r, echo = FALSE, cache = TRUE}
+tabletext<- cbind(c("Method", estimator_name),
+	c("ATE", round(ATE, digits = 1)))
+
+results <- 
+  structure(list(
+    mean  = c(NA, ATE), 
+    lower = c(NA, LB),
+    upper = c(NA, UB)),
+    .Names = c("mean", "lower", "upper"), 
+    row.names = c(NA, -6L), 
+    class = "data.frame")
+  	
+forestplot(tabletext, 
+           results, new_page = TRUE,
+           col=fpColors(box="royalblue",line="darkblue", summary="royalblue"))  	
+```
+

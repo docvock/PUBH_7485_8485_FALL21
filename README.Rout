@@ -97,9 +97,19 @@ The following object is masked from 'package:lattice':
     melanoma
 
 
+
+processing file: Lecture_regression_adjustment.Rmd
+output file: Lecture_regression_adjustment.knit.md
+
+
+Output created: Lecture_regression_adjustment.pdf
+
+
+processing file: Rexample_flexible_regression.Rmd
+
 output file: README.md
 
 [1] "README.md"
 > proc.time()
    user  system elapsed 
-  2.450   0.361   3.402 
+ 40.494   8.045  68.611 
