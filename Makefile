@@ -13,12 +13,13 @@ RDIR01= ./01_Potential_Outcomes_Introduction
 RDIR02= ./02_Tabular_Graphical_Summaries_for_Causal_Inference
 RDIR03= ./03_Theory_Review
 RDIR04= ./04_Regression_Adjustment
+RDIR05= ./05_Propensity_Score_and_Weighting
 FIGDIR= ./figs
 
 # list R files
 # RFILES := $(wildcard $(RDIR)/*.R)
 # Indicator files to show R file has run
-OUT_FILES:=  $(RDIR)/README.Rout $(RDIR01)/Lecture_potential_outcomes_intro.Rout $(RDIR02)/Rexample_TableOne_SMD.Rout $(RDIR03)/Lecture_bootstrap.Rout $(RDIR03)/Lecture_theory_basics.Rout $(RDIR04)/Lecture_regression_adjustment.Rout $(RDIR04)/Rexample_flexible_regression.Rout
+OUT_FILES:=  $(RDIR)/README.Rout $(RDIR01)/Lecture_potential_outcomes_intro.Rout $(RDIR02)/Rexample_TableOne_SMD.Rout $(RDIR03)/Lecture_bootstrap.Rout $(RDIR03)/Lecture_theory_basics.Rout $(RDIR04)/Lecture_regression_adjustment.Rout $(RDIR04)/Rexample_flexible_regression.Rout $(RDIR05)/Lecture_propensity_score.Rout
 
 all: $(OUT_FILES)
 
@@ -43,6 +44,9 @@ $(RDIR04)/Lecture_regression_adjustment.Rout: $(RDIR04)/Lecture_regression_adjus
 
 $(RDIR04)/Rexample_flexible_regression.Rout: $(RDIR04)/Rexample_flexible_regression.R $(RDIR04)/Rexample_flexible_regression.Rmd 
 	R CMD BATCH --slave --vanilla $(RDIR04)/Rexample_flexible_regression.R $(RDIR04)/Rexample_flexible_regression.Rout
+	
+$(RDIR05)/Lecture_propensity_score.Rout: $(RDIR05)/Lecture_propensity_score.R $(RDIR05)/Lecture_propensity_score.Rmd 
+	R CMD BATCH --slave --vanilla $(RDIR05)/Lecture_propensity_score.R $(RDIR05)/Lecture_propensity_score.Rout
 
 # Clean up stray files
 #clean:

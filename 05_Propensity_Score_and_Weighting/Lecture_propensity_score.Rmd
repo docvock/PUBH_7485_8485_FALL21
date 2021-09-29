@@ -1,0 +1,675 @@
+---
+title: "Propensity Scores"
+author: "David M. Vock"
+date: "PubH 7485/8485"
+output: beamer_presentation
+theme: "Boadilla"
+colortheme: "whale"
+fonttheme: "structurebold"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+source("Lecture_propensity_score_library.R")
+
+svyQuant_alt <- function (vars, design, q = 0.5) {
+  res <- vector()
+  for (i in 1:length(vars)) {
+    var <- vars[i]
+    res[i] <- oldsvyquantile(design$variables[var], design = design, 
+      quantiles = q[1], na.rm = TRUE)
+  }
+  out <- as.vector(res)
+  names(out) <- vars
+  out
+}
+
+environment(svyQuant_alt) <- asNamespace('tableone')
+assignInNamespace("svyQuant", svyQuant_alt, ns = "tableone")
+
+data(GerberGreenImai)
+imai <- GerberGreenImai
+
+imai <- mutate(imai,
+  VOTE96.1F = factor(VOTE96.1, labels = c("No", "Yes")),
+  VOTED98F = factor(VOTED98, labels = c("No", "Yes")),
+  NEWF = factor(NEW, labels = c("Previous Voter", "New Voter")),
+  MAJORPTYF = factor(MAJORPTY, labels = c("Republican", "Democrat")),
+  PERSONSF = factor(PERSONS, labels = c("1 Voter", "2+ Voters")),
+  PHN.C1F = factor(PHN.C1, labels = c("Not Contacted", "Contacted")))
+imai <- set_variable_labels(imai,
+	VOTED98F = "Voted in 1998",
+  PHN.C1F = "Contacted by phone", 
+  PERSONSF = "Voters in household", 
+  WARD = "Ward of residence", 
+  AGE = "Age (years)", 
+  MAJORPTYF = "Party affilation", 
+  VOTE96.1F = "Voted in 1996", 
+  NEWF = "New voter" 
+)
+
+p1 <- mean(imai$VOTED98[imai$PHN.C1 == 1])
+p0 <- mean(imai$VOTED98[imai$PHN.C1 == 0])
+n1 <- table(imai$PHN.C1)[2]
+n0 <- table(imai$PHN.C1)[1]
+#print("Unadjusted ATE")
+ATE_unadj <- p1 -  p0
+#print(ATE_unadj, digits = 3)
+#print("Standard Error")
+SE <- sqrt(p1*(1-p1)/n1 + p0*(1-p0)/n0)
+#print(SE, digits = 3)
+#print("95% CI")
+CI_unadj <- p1 - p0 + c(-1, 1)*qnorm(0.975)*SE
+#print(p1 - p0 + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
+
+m1 <- glm(VOTED98 ~ PHN.C1*(PERSONS + VOTE96.1 + NEW + MAJORPTY + AGE) + WARD, data = imai, family = "binomial")
+
+data_trt <- data_ctr <-imai
+data_trt$PHN.C1 = 1
+data_ctr$PHN.C1 = 0
+pred1 <- predict(m1, newdata = data_trt, type = "response")
+pred0 <- predict(m1, newdata = data_ctr, type = "response")
+ATE <- mean(pred1 - pred0)
+
+set.seed(1101985)
+B <- 100
+ATE.boot <- NULL
+n <- nrow(imai)
+for(i in 1:B) {
+  imai.boot <- imai[sample(1:n, n, replace = TRUE), ]
+  m1.boot <- glm(VOTED98 ~ PHN.C1*(PERSONS + VOTE96.1 + 
+      NEW + MAJORPTY + AGE) + WARD, data = imai.boot, 
+    family = "binomial")
+  data_trt.boot <- imai.boot
+  data_trt.boot$PHN.C1 = 1
+  data_ctr.boot <- imai.boot
+  data_ctr.boot$PHN.C1 = 0
+  pred1.boot <- predict(m1.boot, newdata = data_trt.boot, 
+    type = "response")
+  pred0.boot <- predict(m1.boot, newdata = data_ctr.boot, 
+    type = "response")
+  ATE.boot <- c(ATE.boot, mean(pred1.boot - pred0.boot))
+}
+
+#print("Average Treatment Effect")
+#print(ATE, digits = 3)
+SE <- sd(ATE.boot) 
+#print("Bootstrap SE")
+#print(SE, digits = 3)
+#print("Bootstrap Normal 95% CI")
+CI <- ATE + c(-1, 1)*qnorm(0.975)*SE
+#print(ATE + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
+
+vars <- c("VOTED98F", "PERSONSF", "AGE", "VOTE96.1F", 
+  "NEWF", "MAJORPTYF",  "WARD")
+tabUnmatched <- CreateTableOne(vars = vars, strata = "PHN.C1F",
+  data = imai, test = FALSE)
+t1 <- print(tabUnmatched, smd = TRUE, showAllLevels = TRUE, varLabels = TRUE)
+```
+
+## Propensity Score
+
+- Defined for a binary treatment to be $P(A = 1|X) = \pi(X)$
+- Under the assumption of no unmeasured confounding and consistency, the propensity score is a balancing score
+- A balancing score $b(X)$ is any function of the covariates $X$ such that $A$ is independent of $X$ given $b(X)$
+- This means the distribution of the covariates is the same in the treatment and control group at the same level of $b(X)$
+
+## Key Lemma
+
+- If we assume no unmeasured confounders (i.e., $A$ is independent of $\{Y^1, Y^0 \}$ given $X$) then $A$ is independent of $\{Y^1, Y^0 \}$ given $\pi(X)$
+
+## Implication of this lemma
+
+We can estimate the ATE using
+
+1) Regression model with propensity score and treatment as covariates
+2) Propensity stratification (the "nonparametric" version of 1)
+3) Matching (more on this later)
+4) Inverse probability (of treatment) weighting
+
+## Propensity Score Regression
+
+- Estimate propensity score using logistic regression or random forests or some other technique. 
+- Include propensity score and treatment and covariates in model
+- Typically include nonlinear terms for propensity score (e.g., quadratic terms, restricted cubic splines)
+
+## Propensity Model
+
+- Positivity and near-positivity issues with ward
+- For now let's leave ward out of the propensity score model (we'll come back to this later)
+- Just include "main effects" for the other terms
+
+## Propensity Model
+```{r, echo = TRUE, cache = TRUE}
+p1 <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + MAJORPTY + AGE), 
+  data = imai, family = "binomial")
+round(summary(p1)$coefficients, digits = 3)
+```
+
+## Obtain Estimated Propensity Scores and Include in Outcome Model
+
+```{r, echo = TRUE, cache = TRUE}
+# note: rcs function is from rms library
+imai$ps <- predict(p1, type = "response")
+m1.ps <- glm(VOTED98 ~ PHN.C1*rcs(ps, 5), data = imai, family = "binomial")
+round(summary(m1.ps)$coefficients, digits = 3)
+```
+
+## Propensity Score Regression Adjustment
+- Get predicted value for each individual in the dataset assuming that they are (a) in the treatment group and (b) in the control group
+- Take the difference in the mean predicted value to get estimate of ATE
+
+## PS Regression Adjustment
+```{r, echo = TRUE, cache = TRUE}
+data_trt <- data_ctr <-imai
+data_trt$PHN.C1 = 1
+data_ctr$PHN.C1 = 0
+pred1.ps <- predict(m1.ps, newdata = data_trt, type = "response")
+pred0.ps <- predict(m1.ps, newdata = data_ctr, type = "response")
+ATE.ps <- mean(pred1.ps - pred0.ps)
+print(ATE.ps, digits = 3)
+```
+
+## Bootstrap for PS Regression Adjustment
+```{r, echo = TRUE, cache=TRUE, size = "tiny"}
+set.seed(1101985)
+B <- 100
+ATE.ps.boot <- NULL
+n <- nrow(imai)
+for(i in 1:B) {
+  imai.boot <- imai[sample(1:n, n, replace = TRUE), ]
+  m1.ps.boot <- glm(VOTED98 ~ PHN.C1*rcs(ps, 5), data = imai.boot, 
+    family = "binomial")
+  data_trt.boot <- imai.boot
+  data_trt.boot$PHN.C1 = 1
+  data_ctr.boot <- imai.boot
+  data_ctr.boot$PHN.C1 = 0
+  pred1.ps.boot <- predict(m1.ps.boot, newdata = data_trt.boot, 
+    type = "response")
+  pred0.ps.boot <- predict(m1.ps.boot, newdata = data_ctr.boot, 
+    type = "response")
+  ATE.ps.boot <- c(ATE.boot, mean(pred1.ps.boot - pred0.ps.boot))
+  }
+```
+
+## Voting Example: PS Regression Adjustment Results
+```{r, echo = FALSE, cache = TRUE}
+print("Average Treatment Effect")
+print(ATE.ps, digits = 3)
+SE.ps <- sd(ATE.ps.boot) 
+print("Bootstrap SE")
+print(SE.ps, digits = 3)
+print("Bootstrap Normal 95% CI")
+CI.ps <- ATE.ps + c(-1, 1)*qnorm(0.975)*SE.ps
+print(ATE.ps + c(-1, 1)*qnorm(0.975)*SE.ps, digits = 3)
+```
+
+## PS Regression Adjustment Results: Key Assumptions
+
+Identifying
+
+1) Consistency
+2) No Unmeasured confounding
+
+Modeling
+
+1) Outcome model (given propensity score) correctly specified. Note this may involve extrapolation if there is not sufficient overlap in ps between treatment and control. 
+2) Propensity score model (given all confounders) correctly specified.
+
+## Propensity Score Stratificaition
+
+- Estimate propensity score using logistic regression or random forests or some other technique. 
+- Divide the data into quintiles (or deciles) based on the estimated propensity score $\hat{\pi}(X_i)$
+- Estimate the ATE using
+\begin{equation}
+\hat{\delta} = \sum_{j=1}^5 (\overline{Y}_{1j} - \overline{Y}_{0j}) \frac{n_j}{n}
+\end{equation}
+where $(\overline{Y}_{1j}, \overline{Y}_{0j})$ are the sample average response among subjects in the jth quintile receiving treatments 1 and 0, respectively, and $n_j$ is the number of individuals in the jth quintile
+
+## Propensity Score Stratificaition
+- Equivalent to ps regression approach where we categorize ps (rather than using splines or other nonlinear term)
+- Bit ad hoc but seems to work reasonably well for many applications
+
+## Propensity Score Stratification - Putting it All Together
+
+1) In practice we do not know the propensity score, estimate propensity score using logistic regression (or other flexible methods)
+2) Get predicted value of $\pi(X_i)$ - i.e., $\pi(X_i; \hat{\gamma})$
+3) Estimate ATE using 
+\begin{equation}
+\hat{\delta} = \sum_{j=1}^5 (\overline{Y}_{1j} - \overline{Y}_{0j}) \frac{n_j}{n}
+\end{equation}
+4) Use nonparametric bootstrap to get standard error and CI
+
+
+## Obtain Estimated Propensity Scores and Divide Into Quintiles
+
+```{r, echo = TRUE, cache = TRUE}
+ps <- predict(p1, type = "response")
+ps_quintile <- cut(ps, 
+	breaks = c(0, quantile(ps, p = c(0.2, 0.4, 0.6, 0.8)), 1), labels = 1:5)
+table(ps_quintile, imai$PHN.C1)
+```
+
+## Propensity Scores Stratification
+
+```{r, echo = TRUE, cache = TRUE}
+n <- nrow(imai)
+nj <- table(ps_quintile)
+te_quintile <- tapply(imai$VOTED98[imai$PHN.C1 == 1], ps_quintile[imai$PHN.C1 == 1], mean) -
+	tapply(imai$VOTED98[imai$PHN.C1 == 0], ps_quintile[imai$PHN.C1 == 0], mean)
+print(round(te_quintile, 3))
+ATE_PSS <- sum(te_quintile *nj/n)
+print(round(ATE_PSS, 3))
+```
+
+## Bootstrap for PS Stratification 
+```{r, echo = TRUE, cache= TRUE, size = "tiny"}
+set.seed(1101985)
+B <- 100
+ATE_PSS.boot <- NULL
+n <- nrow(imai)
+for(i in 1:B) {
+  imai.boot <- imai[sample(1:n, n, replace = TRUE), ]
+  p1.boot <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + 
+      MAJORPTY + AGE), 
+  data = imai.boot, family = "binomial")
+  ps.boot <- predict(p1.boot, type = "response")
+  ps_quintile.boot <- cut(ps.boot, 
+		breaks = c(0, quantile(ps.boot, p = c(0.2, 0.4, 0.6, 0.8)), 1), labels = 1:5)
+  nj.boot <- table(ps_quintile.boot)
+	te_quintile.boot <- tapply(imai.boot$VOTED98[imai.boot$PHN.C1 == 1], 
+		ps_quintile.boot[imai.boot$PHN.C1 == 1], mean) -
+	tapply(imai.boot$VOTED98[imai.boot$PHN.C1 == 0], ps_quintile.boot[imai.boot$PHN.C1 == 0], mean)
+	ATE.boot <- sum(te_quintile.boot *nj/n)
+  ATE_PSS.boot <- c(ATE_PSS.boot, ATE.boot)
+  }
+```
+
+## Voting Example: Propensity Score Stratification Analysis 
+```{r, echo = FALSE, cache = TRUE}
+print("Average Treatment Effect")
+print(ATE_PSS, digits = 3)
+SE_PSS <- sd(ATE_PSS.boot) 
+print("Bootstrap SE")
+print(SE_PSS, digits = 3)
+print("Bootstrap Normal 95% CI")
+print(ATE_PSS + c(-1, 1)*qnorm(0.975)*SE_PSS, digits = 3)
+CI_PSS <- ATE_PSS + c(-1, 1)*qnorm(0.975)*SE_PSS
+```
+
+## Propensity Score Stratification Results: Key Assumptions
+
+Identifying
+
+1) Consistency
+2) No Unmeasured confounding
+
+Modeling
+
+1) Outcome model (given propensity score) correctly specified. That is, the propensity score can be discretized. 
+2) Propensity score model (given all confounders) correctly specified.
+
+## Putting it All Together
+
+- Compare different causal estimators with ITT 
+- Will add to this throughout the course
+
+## Putting it All Together
+
+```{r, echo = FALSE, cache = TRUE}
+ATE_vector <- c(ATE_unadj, ATE, ATE.ps, ATE_PSS)
+CI_matrix <- rbind(CI_unadj, CI, CI.ps, CI_PSS)
+
+tabletext<- cbind(c("Method", "Unadjusted", "Regression", "PS Reg", "PSS"),
+	c("ATE", round(ATE_vector, digits = 3)))
+
+
+results <- 
+  structure(list(
+    mean  = c(NA, ATE_vector), 
+    lower = c(NA, CI_matrix[, 1]),
+    upper = c(NA, CI_matrix[, 2])),
+    .Names = c("mean", "lower", "upper"), 
+    row.names = c(NA, -5L), 
+    class = "data.frame")
+  	
+forestplot(tabletext, 
+           results, new_page = TRUE,
+           col=fpColors(box="royalblue",line="darkblue", summary="royalblue"))  	
+```
+
+
+## Inverse Probability Weighting: A Toy Example
+
+- The population in the the 7 county metro area has 3.0 million and the entire state of Minnesota has a population of 5.5 million
+- Suppose that I can conduct a simple random sample of 300 residents in the metro area and 700 residents "out-state"
+- In our simple random sample, among those in the 7 county metro area, Gov. Walz's approval was 174/300 (58%) but in out-state it was only 336/700 (48%)
+- What would your estimate of the state-wide approval be?
+
+## Inverse Probability Weighting: A Toy Example
+
+- In the example, there was an over-representation of people from "out-state" and an under-representation of those from the metro
+- Those "over-represented" were "under-weighted" and those "under-represented" were "over-weighted"
+- Here the imbalance by geography was by design, but even when it is not, same analysis principles apply
+
+## Survey Weights in 2016 Election Polling
+
+![NY Times Upshot Blog](survey_weights.png)
+
+
+## Inverse Probability Weighting (IPW1)
+
+- Assume that propensity model is known for now
+- Remember: Assuming that we have iid data, then $\tfrac{1}{n} \sum_{i=1}^n g(Y_i)$ converges in probability to $E\{g(Y)\}$ by the weak law of large numbers
+- Propose to estimate $E(Y^1)$ by $\tfrac{1}{n} \sum_{i=1}^n \frac{A_iY_i}{\pi(X_i)}$
+- Need to show that $E\left \{ \frac{A_iY_i}{\pi(X_i)} \right \} = E(Y^1)$
+- Need to assume that $1 > \pi(X_i) > 0$ for all $X_i$ (positivity assumption)
+- How would I estimate $E(Y^0)$?
+- What is $E\{A/\pi(X_i)\}$?
+
+## Inverse Probability Weighting (IPW2)
+- Some people estimate $E(Y^1)$ by $\tfrac{1}{n} \sum_{i=1}^n \frac{A_iY_i}{\pi(X_i; \hat{\gamma})} / \tfrac{1}{n} \sum_{i=1}^n \frac{A_i}{\pi(X_i; \hat{\gamma})}$
+- Note that $\tfrac{1}{n} \sum_{i=1}^n \frac{A_i}{\pi(X_i; \hat{\gamma})} \approx 1$ so the estimators are very similar
+- This is the estimator that you would get if you used the weighted.mean function in R
+
+## Inverse Probability Weighting - Putting it All Together
+
+1) In practice we do not know the propensity score, estimate propensity score using logistic regression (or other flexible methods)
+2) Get predicted value of $\pi(X_i)$ - i.e., $\pi(X_i; \hat{\gamma})$
+3) Estimate $E(Y^1)$ by $\tfrac{1}{n} \sum_{i=1}^n \frac{A_iY_i}{\pi(X_i; \hat{\gamma})}$ and $E(Y^0)$ by $\tfrac{1}{n} \sum_{i=1}^n \frac{(1-A_i)Y_i}{1- \pi(X_i; \hat{\gamma})}$
+4) Take their difference to estimate $\delta$
+5) Use nonparametric bootstrap to get standard error and CI
+
+## IPW Estimates to Reduce Confounding
+
+- Note that I could also compute the IP weighted mean of the covariates by treatment group
+- If the propensity model is correctly specified, then the IP weighted mean of the covariates should be equal in the two treatment groups; i.e., the standardized mean difference should be 0
+- Before we look at outcome data, calculating the weighted SMD can be used to assess how well IP weighting is doing balancing the two groups. If imbalances persist $\rightarrow$ fit new PS model
+
+## Unweighted Differences in Key Variables Between Groups
+```{r, echo = TRUE, warning = FALSE, size="tiny", results = "asis"}
+knitr::kable(t1)
+```
+
+## Weighted Differences in Key Variables Between Groups
+```{r, echo = TRUE, warning=FALSE, results = "hide", size="tiny"} 
+ps <- predict(p1, type = "response")
+imai$weight <- imai$PHN.C1/ps + (1-imai$PHN.C1)/(1-ps)
+imaiSvy <- svydesign(ids = ~ 1, data = imai, weights = ~ weight)
+
+tabWeighted <- svyCreateTableOne(vars = vars, strata = "PHN.C1F",
+  data = imaiSvy, test = FALSE)
+t2 <- print(tabWeighted, smd = TRUE, showAllLevels = TRUE, varLabels = TRUE)
+```
+
+## Weighted Differences in Key Variables Between Groups
+```{r, echo = TRUE, warning = FALSE, size="tiny", results = "asis"}
+knitr::kable(t2)
+```
+
+## Plot of SMD
+
+```{r, echo = TRUE, size="tiny", results = "hide"}
+dataPlot <- data.frame(variable  = rownames(ExtractSmd(tabUnmatched)),
+	Unweighted = as.numeric(ExtractSmd(tabUnmatched)),
+	Weighted_logit  = as.numeric(ExtractSmd(tabWeighted)))
+dataPlot <- dplyr::filter(dataPlot, 
+                          variable != "VOTED98F")
+
+## Create long-format data for ggplot2
+dataPlotMelt <- melt(data          = dataPlot,
+	id.vars       = c("variable"),
+	variable.name = "Method",
+	value.name    = "SMD")
+
+## Order variable names by magnitude of SMD
+varNames <- as.character(dataPlot$variable)[order(dataPlot$Unweighted)]
+
+## Order factor levels in the same order
+dataPlotMelt$variable <- factor(dataPlotMelt$variable,
+	levels = varNames)
+
+## Plot using ggplot2
+ggplot(data = dataPlotMelt,
+	mapping = aes(x = variable, y = SMD, group = Method, color = Method)) +
+	geom_line() +
+	geom_point() +
+	geom_hline(yintercept = 0.1, color = "black", size = 0.1) +
+	coord_flip() +
+	theme_bw() + theme(legend.key = element_blank())
+```
+
+## Plot of SMD
+
+```{r, echo = FALSE}
+ggplot(data = dataPlotMelt,
+	mapping = aes(x = variable, y = SMD, group = Method, color = Method)) +
+	geom_line() +
+	geom_point() +
+	geom_hline(yintercept = 0.1, color = "black", size = 0.1) +
+	coord_flip() +
+	theme_bw() + theme(legend.key = element_blank())
+```
+
+## Final notes
+
+- Some (a lot of) people do not use bootstrap to get standard errors and pretend as if $\gamma$ (parameter in the propensity model) is known --> this is actually conservative. This can be implemented in survey package in R
+- Might be concerned about weights that are excessively large relative to weights in the same treatment condition. Some recommend truncating weights at 99th percentile but this is very, very ad hoc. 
+
+## Form Inverse Probability Weights
+```{r, echo = TRUE, cache = TRUE}
+ps <- predict(p1, type = "response")
+w1 <- imai$PHN.C1/ps
+w0 <- (1-imai$PHN.C1)/(1-ps)
+```
+
+## Histogram of Weights
+```{r, echo = FALSE, cache = TRUE}
+hist(w1[imai$PHN.C1 == 1], main  = "Weights for Treated")
+```
+
+## Histogram of Standardized Weights
+
+- Even if treatment were randomized here (i.e., weights were all equal), the weights would be large due to unequal allocation ($1/P(A|X) = 1/P(A) = 42.84$)
+- Could divide weights in treated by $1/P(A)$ to get idea of "excess" influence (standardized weights)  
+
+## Histogram of Standardized Weights
+```{r, echo = FALSE, cache = TRUE}
+P.A <- prop.table(table(imai$PHN.C1))[2]
+hist(w1[imai$PHN.C1 == 1]/(1/P.A), main  = "Std. Weights for Treated")
+```
+
+## Histogram of Weights
+```{r, echo = FALSE, cache = TRUE}
+hist(w0[imai$PHN.C1 == 0], main  = "Weights for Untreated")
+```
+
+## Histogram of Standardized Weights
+
+- Could divide weights in untreated by $1/\{1-P(A)\}$ to get idea of "excess" influence (standardized weights)  
+
+## Histogram of Standardized Weights
+```{r, echo = FALSE, cache = TRUE}
+hist(w0[imai$PHN.C1 == 0]/(1/(1-P.A)), main  = "Std Weights for Untreated")
+```
+
+## IPW1 Adjustment
+```{r, echo = TRUE, cache = TRUE}
+ATE_IPW <- mean(imai$VOTED98*w1) - mean(imai$VOTED98*w0)
+print(ATE_IPW, digits = 3)
+```
+
+## IPW2 Adjustment
+```{r, echo = TRUE, cache = TRUE}
+ATE_IPW2 <- weighted.mean(imai$VOTED98, w1) - 
+	weighted.mean(imai$VOTED98, w0)
+print(ATE_IPW2, digits = 3)
+```
+
+## Bootstrap for IPW Estimators
+```{r, echo = TRUE, cache= TRUE, size = "tiny"}
+set.seed(1101985)
+B <- 100
+ATE_IPW.boot <- NULL
+ATE_IPW2.boot <- NULL
+n <- nrow(imai)
+for(i in 1:B) {
+  imai.boot <- imai[sample(1:n, n, replace = TRUE), ]
+  p1.boot <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + 
+      MAJORPTY + AGE), 
+  data = imai.boot, family = "binomial")
+  ps.boot <- predict(p1.boot, type = "response")
+  w1.boot <- imai.boot$PHN.C1/ps.boot
+  w0.boot <- (1-imai.boot$PHN.C1)/(1-ps.boot)
+  ATE_IPW.boot <- c(ATE_IPW.boot, 
+    mean(imai.boot$VOTED98*w1.boot) - mean(imai.boot$VOTED98*w0.boot))
+  ATE_IPW2.boot <- c(ATE_IPW2.boot, 
+    weighted.mean(imai.boot$VOTED98, w1.boot) - weighted.mean(imai.boot$VOTED98, w0.boot))
+  }
+```
+
+## Voting Example: IPW1 Analysis
+```{r, echo = FALSE, cache = TRUE}
+print("Average Treatment Effect")
+print(ATE_IPW, digits = 3)
+SE_IPW <- sd(ATE_IPW.boot) 
+print("Bootstrap SE")
+print(SE_IPW, digits = 3)
+print("Bootstrap Normal 95% CI")
+print(ATE_IPW + c(-1, 1)*qnorm(0.975)*SE_IPW, digits = 3)
+CI_IPW <- ATE_IPW + c(-1, 1)*qnorm(0.975)*SE_IPW
+```
+
+## Voting Example: IPW2 Analysis
+```{r, echo = FALSE, cache = TRUE}
+print("Average Treatment Effect")
+print(ATE_IPW2, digits = 3)
+SE_IPW2 <- sd(ATE_IPW2.boot) 
+print("Bootstrap SE")
+print(SE_IPW2, digits = 3)
+print("Bootstrap Normal 95% CI")
+print(ATE_IPW2 + c(-1, 1)*qnorm(0.975)*SE_IPW2, digits = 3)
+CI_IPW2 <- ATE_IPW2 + c(-1, 1)*qnorm(0.975)*SE_IPW2
+```
+
+## Voting Example: IPW2 Analysis Using Survey Pkg
+```{r, echo = TRUE, cache = TRUE}
+imaiSvy <- svydesign(ids = ~ 1, data = imai, weights = ~ weight)
+fitSvymodel <- svyglm(VOTED98 ~ PHN.C1, imaiSvy, family = "binomial")
+summary(fitSvymodel)
+```
+
+## Voting Example: IPW2 Analysis Using Survey Pkg
+- Note that this gives me a causal log odds ratio. We could transform to get difference in proportions but would need Delta theorem or bootstrap to get SE/CI
+
+## Voting Example: IPW2 Analysis Using Survey Pkg
+```{r, echo = FALSE}
+expit <- function(x) {
+  expit <- exp(x)/(1 + exp(x))
+  return(expit)
+}
+EY0 <- expit(fitSvymodel$coef[1])
+EY1 <- expit(fitSvymodel$coef[1] + fitSvymodel$coef[2])
+ATE_IPW_survey <- EY1 - EY0
+print("Average Treatment Effect")
+print(ATE_IPW_survey, digits = 3)
+```
+
+## IPW Results: Key Assumptions
+
+Identifying
+
+1) Consistency
+2) No Unmeasured confounding
+3) Positivity
+
+Modeling
+
+1) Propensity score model (given all confounders) correctly specified.
+
+## Putting it All Together
+
+```{r, echo = FALSE, cache = TRUE}
+ATE_vector <- c(ATE_unadj, ATE, ATE.ps, ATE_PSS, ATE_IPW, ATE_IPW2)
+CI_matrix <- rbind(CI_unadj, CI, CI.ps, CI_PSS, CI_IPW, CI_IPW2)
+
+tabletext<- cbind(c("Method", "Unadjusted", "Regression", "PS Reg", "PSS", "IPW1", "IPW2"),
+	c("ATE", round(ATE_vector, digits = 3)))
+
+
+results <- 
+  structure(list(
+    mean  = c(NA, ATE_vector), 
+    lower = c(NA, CI_matrix[, 1]),
+    upper = c(NA, CI_matrix[, 2])),
+    .Names = c("mean", "lower", "upper"), 
+    row.names = c(NA, -7L), 
+    class = "data.frame")
+  	
+forestplot(tabletext, 
+           results, new_page = TRUE,
+           col=fpColors(box="royalblue",line="darkblue", summary="royalblue"))  	
+```
+
+## Advantages/Disadvantages of IPW versus regression model
+
+- Both approaches require assuming consistency and no unmeasured confounding 
+- IPW requires assuming positivity
+- IPW requires correctly specifying propensity model; regression approach requires specifying the outcome model
+- IPW: can fit a single model (propensity score) and then obtain causal estimates for several outcomes
+- Perception that modeling treatment allocation "easier" than outcome 
+- IPW tends to be more variably (even without extreme weights)
+
+## Simulation Example
+
+- Let  $X_i \sim N(0,1)$, $Y_i^1 |X_i \sim N(0.5 + \gamma X, 1)$ and $Y_i^0 |X_i \sim N(\gamma X, 1)$.  ATE = $E(Y^1) - E(Y^0) = 0.5$
+- Note that in the "real world" we do not observe $\{ Y_i^1, Y_i^0$ but would observe $Y_i = A_i Y_i^1 + (1-A_i) Y_i^0$. This implies that $Y_i |A_i, X_i \sim (0.5A_i + \gamma X_i, 1)$
+- Let $A_i|X_i \sim \mbox{Bernoulli}(p_i)$ where $p_i = \exp(0 + \alpha X_i)/\{1 + \exp(0+\alpha X_i)\}$
+- Generate a sample of size 500 consistent with this data generating mechanism with $\gamma = 1$ and $\alpha = 1$. 
+- With these coefficients the $R^2$ for regressing the outcome on $X$ in placebo group is 0.5 and C-index for the treatment allocation $\approx$ 0.75 
+- 100 Monte Carlo datasets
+
+## Simulation Results
+
+```{r, echo= FALSE, cache=TRUE}
+set.seed(1101985)
+S <- 100
+n <- 500
+gamma <- 1
+alpha <- 1
+ATE.ipw.total <- NULL
+ATE.reg.total <- NULL
+for(i in 1:S) {
+  X <- rnorm(n, 0, 1)
+Y1 <- rnorm(n, gamma*X + 0.5, 1)
+Y0 <- rnorm(n, gamma*X, 1)
+A <- rbinom(n, 1, exp(alpha*X)/(1+exp(alpha*X)))
+Y <- Y1*A + Y0*(1-A)
+prop.model <- glm(A ~ X, family = "binomial")
+pred.prop.model <- predict(prop.model, type = "response")
+w1.sim <- A/pred.prop.model
+w0.sim <- (1-A)/(1-pred.prop.model)
+ATE.ipw <- mean(Y*w1.sim) - mean(Y*w0.sim)
+ATE.ipw.total <- c(ATE.ipw.total, ATE.ipw)
+reg.model <- lm(Y ~ X + A + X*A)
+data_trt <- data.frame(X = X, A = 1) 
+data_ctr <- data.frame(X = X, A = 0)
+pred1.sim <- predict(reg.model, newdata = data_trt, type = "response")
+pred0.sim <- predict(reg.model, newdata = data_ctr, type = "response")
+ATE.reg <- mean(pred1.sim - pred0.sim)
+ATE.reg.total <- c(ATE.reg.total, ATE.reg)
+#print(i)
+}
+bias.ATE <- c(mean(ATE.ipw.total), mean(ATE.reg.total)) - 0.5
+sd.ATE <- c(sd(ATE.ipw.total), sd(ATE.reg.total))
+result <- data.frame(bias = bias.ATE, sd = sd.ATE)
+rownames(result) <- c("IPW", "REG")
+print(result, digits = 3)
+
+```
+

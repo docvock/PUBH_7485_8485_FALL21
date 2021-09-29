@@ -29,7 +29,7 @@ source("Rexample_flexible_regression_library.R")
 
 
 ## Summarize Baseline Covariates
-```{r, echo=FALSE, size = "tiny"}
+```{r, echo=TRUE, size = "tiny"}
 load("homework1_dataset.Rdata")
 usek <- select(usek, -dose400)
 ihdp <- set_variable_labels(usek, 
@@ -54,7 +54,13 @@ ihdp <- set_variable_labels(usek,
                             momraceF = "Mother's race",
                             workdur.imp = "Mother's work status"
 )
-print(CreateTableOne(data=ihdp, strata="treat"), varLabels = TRUE, smd = TRUE, test = FALSE, missing = TRUE)
+t1 <- print(CreateTableOne(data=ihdp, strata="treat"), varLabels = TRUE, smd = TRUE, test = FALSE, missing = TRUE)
+knitr::kable(t1)
+```
+
+## Summarize Baseline Covariates
+```{r, echo = TRUE, warning = FALSE, size="tiny", results = "asis"}
+knitr::kable(t1)
 ```
 
 ## Unadjusted (Associational) Treatment Effect

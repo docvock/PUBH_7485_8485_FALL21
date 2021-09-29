@@ -66,9 +66,7 @@ The slides for this course were compiled with [RStudio](http://www.rstudio.com/)
 ## List of 2
 ##  $ echo : logi FALSE
 ##  $ cache: logi TRUE
-```
-
-```
+## 
 ##   |                                                                              |.......................                                               |  33%
 ##   ordinary text without R code
 ## 
