@@ -1,0 +1,138 @@
+
+
+processing file: Rexample_covariate_overlap.Rmd
+  |                                                                              |                                                                      |   0%  |                                                                              |...                                                                   |   4%
+  ordinary text without R code
+
+  |                                                                              |.....                                                                 |   8%
+label: setup (with options) 
+List of 1
+ $ include: logi FALSE
+
+  |                                                                              |........                                                              |  12%
+  ordinary text without R code
+
+  |                                                                              |...........                                                           |  15%
+label: unnamed-chunk-1 (with options) 
+List of 1
+ $ echo: logi TRUE
+
+  |                                                                              |.............                                                         |  19%
+  ordinary text without R code
+
+  |                                                                              |................                                                      |  23%
+label: unnamed-chunk-2 (with options) 
+List of 4
+ $ echo   : logi TRUE
+ $ warning: logi FALSE
+ $ size   : chr "tiny"
+ $ results: chr "asis"
+
+  |                                                                              |...................                                                   |  27%
+  ordinary text without R code
+
+  |                                                                              |......................                                                |  31%
+label: unnamed-chunk-3 (with options) 
+List of 1
+ $ echo: logi TRUE
+
+  |                                                                              |........................                                              |  35%
+  ordinary text without R code
+
+  |                                                                              |...........................                                           |  38%
+label: unnamed-chunk-4 (with options) 
+List of 3
+ $ echo      : logi TRUE
+ $ size      : chr "tiny"
+ $ fig.height: num 4
+
+  |                                                                              |..............................                                        |  42%
+  ordinary text without R code
+
+  |                                                                              |................................                                      |  46%
+label: unnamed-chunk-5 (with options) 
+List of 3
+ $ echo      : logi TRUE
+ $ size      : chr "tiny"
+ $ fig.height: num 4
+
+  |                                                                              |...................................                                   |  50%
+  ordinary text without R code
+
+  |                                                                              |......................................                                |  54%
+label: unnamed-chunk-6 (with options) 
+List of 4
+ $ echo   : logi TRUE
+ $ warning: logi FALSE
+ $ results: chr "hide"
+ $ size   : chr "tiny"
+
+  |                                                                              |........................................                              |  58%
+  ordinary text without R code
+
+  |                                                                              |...........................................                           |  62%
+label: unnamed-chunk-7 (with options) 
+List of 4
+ $ echo   : logi TRUE
+ $ warning: logi FALSE
+ $ size   : chr "tiny"
+ $ results: chr "asis"
+
+  |                                                                              |..............................................                        |  65%
+  ordinary text without R code
+
+  |                                                                              |................................................                      |  69%
+label: unnamed-chunk-8 (with options) 
+List of 3
+ $ echo      : logi TRUE
+ $ size      : chr "tiny"
+ $ fig.height: num 4
+
+  |                                                                              |...................................................                   |  73%
+  ordinary text without R code
+
+  |                                                                              |......................................................                |  77%
+label: unnamed-chunk-9 (with options) 
+List of 3
+ $ echo      : logi TRUE
+ $ size      : chr "tiny"
+ $ fig.height: num 4
+
+  |                                                                              |.........................................................             |  81%
+  ordinary text without R code
+
+  |                                                                              |...........................................................           |  85%
+label: unnamed-chunk-10 (with options) 
+List of 2
+ $ echo : logi TRUE
+ $ cache: logi TRUE
+
+  |                                                                              |..............................................................        |  88%
+  ordinary text without R code
+
+  |                                                                              |.................................................................     |  92%
+label: unnamed-chunk-11 (with options) 
+List of 3
+ $ echo      : logi TRUE
+ $ size      : chr "tiny"
+ $ fig.height: num 4
+
+  |                                                                              |...................................................................   |  96%
+  ordinary text without R code
+
+  |                                                                              |......................................................................| 100%
+label: unnamed-chunk-12 (with options) 
+List of 3
+ $ echo      : logi TRUE
+ $ size      : chr "tiny"
+ $ fig.height: num 4
+
+
+output file: Rexample_covariate_overlap.knit.md
+
+/Applications/RStudio.app/Contents/MacOS/pandoc/pandoc +RTS -K512m -RTS Rexample_covariate_overlap.knit.md --to beamer --from markdown+autolink_bare_uris+tex_math_single_backslash --output Rexample_covariate_overlap.tex --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/latex-div.lua --highlight-style tango --pdf-engine pdflatex --self-contained 
+
+Output created: Rexample_covariate_overlap.pdf
+> proc.time()
+   user  system elapsed 
+ 34.028   7.064  80.661 

@@ -123,9 +123,170 @@ List of 4
  $ results: chr "hide"
  $ size   : chr "tiny"
 
-Quitting from lines 385-392 (Lecture_propensity_score.Rmd) 
-Error in round(n, digits = digits) : 
-  non-numeric argument to mathematical function
-Calls: render ... print -> print.svyContTable -> sapply -> lapply -> FUN
+  |                                                                              |...............................                                       |  44%
+  ordinary text without R code
 
-Execution halted
+  |                                                                              |................................                                      |  46%
+label: unnamed-chunk-13 (with options) 
+List of 4
+ $ echo   : logi TRUE
+ $ warning: logi FALSE
+ $ size   : chr "tiny"
+ $ results: chr "asis"
+
+  |                                                                              |.................................                                     |  48%
+  ordinary text without R code
+
+  |                                                                              |..................................                                    |  49%
+label: unnamed-chunk-14 (with options) 
+List of 3
+ $ echo   : logi TRUE
+ $ size   : chr "tiny"
+ $ results: chr "hide"
+
+  |                                                                              |....................................                                  |  51%
+  ordinary text without R code
+
+  |                                                                              |.....................................                                 |  52%
+label: unnamed-chunk-15 (with options) 
+List of 1
+ $ echo: logi FALSE
+
+  |                                                                              |......................................                                |  54%
+  ordinary text without R code
+
+  |                                                                              |.......................................                               |  56%
+label: unnamed-chunk-16 (with options) 
+List of 2
+ $ echo : logi TRUE
+ $ cache: logi TRUE
+
+  |                                                                              |........................................                              |  57%
+  ordinary text without R code
+
+  |                                                                              |.........................................                             |  59%
+label: unnamed-chunk-17 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |..........................................                            |  61%
+  ordinary text without R code
+
+  |                                                                              |............................................                          |  62%
+label: unnamed-chunk-18 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.............................................                         |  64%
+  ordinary text without R code
+
+  |                                                                              |..............................................                        |  66%
+label: unnamed-chunk-19 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |...............................................                       |  67%
+  ordinary text without R code
+
+  |                                                                              |................................................                      |  69%
+label: unnamed-chunk-20 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.................................................                     |  70%
+  ordinary text without R code
+
+  |                                                                              |..................................................                    |  72%
+label: unnamed-chunk-21 (with options) 
+List of 2
+ $ echo : logi TRUE
+ $ cache: logi TRUE
+
+  |                                                                              |....................................................                  |  74%
+  ordinary text without R code
+
+  |                                                                              |.....................................................                 |  75%
+label: unnamed-chunk-22 (with options) 
+List of 2
+ $ echo : logi TRUE
+ $ cache: logi TRUE
+
+  |                                                                              |......................................................                |  77%
+  ordinary text without R code
+
+  |                                                                              |.......................................................               |  79%
+label: unnamed-chunk-23 (with options) 
+List of 3
+ $ echo : logi TRUE
+ $ cache: logi TRUE
+ $ size : chr "tiny"
+
+  |                                                                              |........................................................              |  80%
+  ordinary text without R code
+
+  |                                                                              |.........................................................             |  82%
+label: unnamed-chunk-24 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |...........................................................           |  84%
+  ordinary text without R code
+
+  |                                                                              |............................................................          |  85%
+label: unnamed-chunk-25 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.............................................................         |  87%
+  ordinary text without R code
+
+  |                                                                              |..............................................................        |  89%
+label: unnamed-chunk-26 (with options) 
+List of 2
+ $ echo : logi TRUE
+ $ cache: logi TRUE
+
+  |                                                                              |...............................................................       |  90%
+  ordinary text without R code
+
+  |                                                                              |................................................................      |  92%
+label: unnamed-chunk-27 (with options) 
+List of 1
+ $ echo: logi FALSE
+
+  |                                                                              |.................................................................     |  93%
+  ordinary text without R code
+
+  |                                                                              |...................................................................   |  95%
+label: unnamed-chunk-28 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |....................................................................  |  97%
+  ordinary text without R code
+
+  |                                                                              |..................................................................... |  98%
+label: unnamed-chunk-29 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |......................................................................| 100%
+  ordinary text without R code
+
+
+output file: Lecture_propensity_score.knit.md
+
+/Applications/RStudio.app/Contents/MacOS/pandoc/pandoc +RTS -K512m -RTS Lecture_propensity_score.knit.md --to beamer --from markdown+autolink_bare_uris+tex_math_single_backslash --output Lecture_propensity_score.tex --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/latex-div.lua --highlight-style tango --pdf-engine pdflatex --self-contained 
+
+Output created: Lecture_propensity_score.pdf
+> proc.time()
+   user  system elapsed 
+ 34.144   5.679  49.024 

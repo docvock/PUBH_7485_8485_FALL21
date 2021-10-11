@@ -44,9 +44,7 @@ The slides for this course were compiled with [RStudio](http://www.rstudio.com/)
 ## List of 2
 ##  $ echo : logi FALSE
 ##  $ cache: logi TRUE
-```
-
-```
+## 
 ##   |                                                                              |.............                                                         |  19%
 ##   ordinary text without R code
 ## 
@@ -55,9 +53,7 @@ The slides for this course were compiled with [RStudio](http://www.rstudio.com/)
 ## List of 2
 ##  $ echo : logi FALSE
 ##  $ cache: logi TRUE
-```
-
-```
+## 
 ##   |                                                                              |..................                                                    |  26%
 ##   ordinary text without R code
 ## 
@@ -158,7 +154,7 @@ The slides for this course were compiled with [RStudio](http://www.rstudio.com/)
 ##   ordinary text without R code
 ## 
 ## 
-## /private/var/folders/f4/nqs_tn8j29l78jxg3nchcb580000gn/T/AppTranslocation/FAF05EC1-8897-4CC7-8A9D-AB36C6218F5B/d/RStudio.app/Contents/MacOS/pandoc/pandoc +RTS -K512m -RTS Lecture_regression_adjustment.knit.md --to beamer --from markdown+autolink_bare_uris+tex_math_single_backslash --output Lecture_regression_adjustment.tex --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/latex-div.lua --highlight-style tango --pdf-engine pdflatex --self-contained
+## /Applications/RStudio.app/Contents/MacOS/pandoc/pandoc +RTS -K512m -RTS Lecture_regression_adjustment.knit.md --to beamer --from markdown+autolink_bare_uris+tex_math_single_backslash --output Lecture_regression_adjustment.tex --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/latex-div.lua --highlight-style tango --pdf-engine pdflatex --self-contained
 ```
 
 ```

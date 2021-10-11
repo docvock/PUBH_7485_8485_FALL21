@@ -1,0 +1,59 @@
+
+
+processing file: Lecture_augmented_ipw.Rmd
+  |                                                                              |                                                                      |   0%  |                                                                              |.......                                                               |  10%
+  ordinary text without R code
+
+  |                                                                              |..............                                                        |  20%
+label: setup (with options) 
+List of 2
+ $ include: logi FALSE
+ $ cache  : logi TRUE
+
+  |                                                                              |.....................                                                 |  30%
+  ordinary text without R code
+
+  |                                                                              |............................                                          |  40%
+label: unnamed-chunk-1 (with options) 
+List of 2
+ $ echo : logi TRUE
+ $ cache: logi TRUE
+
+  |                                                                              |...................................                                   |  50%
+  ordinary text without R code
+
+  |                                                                              |..........................................                            |  60%
+label: unnamed-chunk-2 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+  |                                                                              |.................................................                     |  70%
+  ordinary text without R code
+
+  |                                                                              |........................................................              |  80%
+label: unnamed-chunk-3 (with options) 
+List of 4
+ $ echo   : logi FALSE
+ $ warning: logi FALSE
+ $ message: logi FALSE
+ $ cache  : logi TRUE
+
+  |                                                                              |...............................................................       |  90%
+  ordinary text without R code
+
+  |                                                                              |......................................................................| 100%
+label: unnamed-chunk-4 (with options) 
+List of 2
+ $ echo : logi FALSE
+ $ cache: logi TRUE
+
+
+output file: Lecture_augmented_ipw.knit.md
+
+/Applications/RStudio.app/Contents/MacOS/pandoc/pandoc +RTS -K512m -RTS Lecture_augmented_ipw.knit.md --to beamer --from markdown+autolink_bare_uris+tex_math_single_backslash --output Lecture_augmented_ipw.tex --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rmarkdown/rmarkdown/lua/latex-div.lua --highlight-style tango --pdf-engine pdflatex --self-contained 
+
+Output created: Lecture_augmented_ipw.pdf
+> proc.time()
+   user  system elapsed 
+115.629  25.127 172.946 

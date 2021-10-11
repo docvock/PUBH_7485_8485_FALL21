@@ -1,0 +1,448 @@
+---
+title: "Augmented IPW and Doubly Robust Estimators"
+author: "David M. Vock"
+date: "PubH 7485/8485"
+output: beamer_presentation
+theme: "Boadilla"
+colortheme: "whale"
+fonttheme: "structurebold"
+---
+
+```{r setup, include=FALSE, cache = TRUE}
+knitr::opts_chunk$set(echo = FALSE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+library(dplyr)
+library(tableone)
+library(labelled)
+library(knitr)
+library(rms)
+library(forestplot)
+library(Matching)
+library(reshape2)
+library(survey)
+library(boot)
+library(ggplot2)
+
+data(GerberGreenImai)
+imai <- GerberGreenImai
+
+imai <- mutate(imai,
+  VOTE96.1F = factor(VOTE96.1, labels = c("No", "Yes")),
+  VOTED98F = factor(VOTED98, labels = c("No", "Yes")),
+  NEWF = factor(NEW, labels = c("Previous Voter", "New Voter")),
+  MAJORPTYF = factor(MAJORPTY, labels = c("Republican", "Democrat")),
+  PERSONSF = factor(PERSONS, labels = c("1 Voter", "2+ Voters")),
+  PHN.C1F = factor(PHN.C1, labels = c("Not Contacted", "Contacted")))
+imai <- set_variable_labels(imai,
+	VOTED98F = "Voted in 1998",
+  PHN.C1F = "Contacted by phone", 
+  PERSONSF = "Voters in household", 
+  WARD = "Ward of residence", 
+  AGE = "Age (years)", 
+  MAJORPTYF = "Party affilation", 
+  VOTE96.1F = "Voted in 1996", 
+  NEWF = "New voter" 
+)
+
+p1 <- mean(imai$VOTED98[imai$PHN.C1 == 1])
+p0 <- mean(imai$VOTED98[imai$PHN.C1 == 0])
+n1 <- table(imai$PHN.C1)[2]
+n0 <- table(imai$PHN.C1)[1]
+#print("Unadjusted ATE")
+ATE_unadj <- p1 -  p0
+#print(ATE_unadj, digits = 3)
+#print("Standard Error")
+SE <- sqrt(p1*(1-p1)/n1 + p0*(1-p0)/n0)
+#print(SE, digits = 3)
+#print("95% CI")
+CI_unadj <- p1 - p0 + c(-1, 1)*qnorm(0.975)*SE
+#print(p1 - p0 + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
+
+m1 <- glm(VOTED98 ~ PHN.C1*(PERSONS + VOTE96.1 + NEW + MAJORPTY + AGE) + WARD, data = imai, family = "binomial")
+
+data_trt <- data_ctr <-imai
+data_trt$PHN.C1 = 1
+data_ctr$PHN.C1 = 0
+pred1 <- predict(m1, newdata = data_trt, type = "response")
+pred0 <- predict(m1, newdata = data_ctr, type = "response")
+ATE <- mean(pred1 - pred0)
+
+set.seed(1101985)
+B <- 100
+ATE.boot <- NULL
+n <- nrow(imai)
+for(i in 1:B) {
+  imai.boot <- imai[sample(1:n, n, replace = TRUE), ]
+  m1.boot <- glm(VOTED98 ~ PHN.C1*(PERSONS + VOTE96.1 + 
+      NEW + MAJORPTY + AGE) + WARD, data = imai.boot, 
+    family = "binomial")
+  data_trt.boot <- imai.boot
+  data_trt.boot$PHN.C1 = 1
+  data_ctr.boot <- imai.boot
+  data_ctr.boot$PHN.C1 = 0
+  pred1.boot <- predict(m1.boot, newdata = data_trt.boot, 
+    type = "response")
+  pred0.boot <- predict(m1.boot, newdata = data_ctr.boot, 
+    type = "response")
+  ATE.boot <- c(ATE.boot, mean(pred1.boot - pred0.boot))
+}
+
+#print("Average Treatment Effect")
+#print(ATE, digits = 3)
+SE <- sd(ATE.boot) 
+#print("Bootstrap SE")
+#print(SE, digits = 3)
+#print("Bootstrap Normal 95% CI")
+CI <- ATE + c(-1, 1)*qnorm(0.975)*SE
+#print(ATE + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
+
+vars <- c("VOTED98F", "PERSONSF", "AGE", "VOTE96.1F", 
+  "NEWF", "MAJORPTYF",  "WARD")
+tabUnmatched <- CreateTableOne(vars = vars, strata = "PHN.C1F",
+  data = imai, test = FALSE)
+t1 <- print(tabUnmatched, smd = TRUE, showAllLevels = TRUE, varLabels = TRUE)
+
+p1 <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + MAJORPTY + AGE), 
+  data = imai, family = "binomial")
+#round(summary(p1)$coefficients, digits = 3)
+
+imai$ps <- predict(p1, type = "response")
+m1.ps <- glm(VOTED98 ~ PHN.C1*rcs(ps, 5), data = imai, family = "binomial")
+
+data_trt <- data_ctr <-imai
+data_trt$PHN.C1 = 1
+data_ctr$PHN.C1 = 0
+pred1.ps <- predict(m1.ps, newdata = data_trt, type = "response")
+pred0.ps <- predict(m1.ps, newdata = data_ctr, type = "response")
+ATE.ps <- mean(pred1.ps - pred0.ps)
+print(ATE.ps, digits = 3)
+
+set.seed(1101985)
+B <- 100
+ATE.ps.boot <- NULL
+n <- nrow(imai)
+for(i in 1:B) {
+  imai.boot <- imai[sample(1:n, n, replace = TRUE), ]
+  m1.ps.boot <- glm(VOTED98 ~ PHN.C1*rcs(ps, 5), data = imai.boot, 
+    family = "binomial")
+  data_trt.boot <- imai.boot
+  data_trt.boot$PHN.C1 = 1
+  data_ctr.boot <- imai.boot
+  data_ctr.boot$PHN.C1 = 0
+  pred1.ps.boot <- predict(m1.ps.boot, newdata = data_trt.boot, 
+    type = "response")
+  pred0.ps.boot <- predict(m1.ps.boot, newdata = data_ctr.boot, 
+    type = "response")
+  ATE.ps.boot <- c(ATE.boot, mean(pred1.ps.boot - pred0.ps.boot))
+}
+
+#print("Average Treatment Effect")
+#print(ATE.ps, digits = 3)
+SE.ps <- sd(ATE.ps.boot) 
+#print("Bootstrap SE")
+#print(SE.ps, digits = 3)
+#print("Bootstrap Normal 95% CI")
+CI.ps <- ATE.ps + c(-1, 1)*qnorm(0.975)*SE.ps
+#print(ATE.ps + c(-1, 1)*qnorm(0.975)*SE.ps, digits = 3)
+
+ps <- predict(p1, type = "response")
+ps_quintile <- cut(ps, 
+	breaks = c(0, quantile(ps, p = c(0.2, 0.4, 0.6, 0.8)), 1), labels = 1:5)
+
+n <- nrow(imai)
+nj <- table(ps_quintile)
+te_quintile <- tapply(imai$VOTED98[imai$PHN.C1 == 1], ps_quintile[imai$PHN.C1 == 1], mean) -
+	tapply(imai$VOTED98[imai$PHN.C1 == 0], ps_quintile[imai$PHN.C1 == 0], mean)
+#print(round(te_quintile, 3))
+ATE_PSS <- sum(te_quintile *nj/n)
+#print(round(ATE_PSS, 3))
+
+set.seed(1101985)
+B <- 100
+ATE_PSS.boot <- NULL
+n <- nrow(imai)
+for(i in 1:B) {
+  imai.boot <- imai[sample(1:n, n, replace = TRUE), ]
+  p1.boot <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + 
+      MAJORPTY + AGE), 
+  data = imai.boot, family = "binomial")
+  ps.boot <- predict(p1.boot, type = "response")
+  ps_quintile.boot <- cut(ps.boot, 
+		breaks = c(0, quantile(ps.boot, p = c(0.2, 0.4, 0.6, 0.8)), 1), labels = 1:5)
+  nj.boot <- table(ps_quintile.boot)
+	te_quintile.boot <- tapply(imai.boot$VOTED98[imai.boot$PHN.C1 == 1], 
+		ps_quintile.boot[imai.boot$PHN.C1 == 1], mean) -
+	tapply(imai.boot$VOTED98[imai.boot$PHN.C1 == 0], ps_quintile.boot[imai.boot$PHN.C1 == 0], mean)
+	ATE.boot <- sum(te_quintile.boot *nj/n)
+  ATE_PSS.boot <- c(ATE_PSS.boot, ATE.boot)
+  }
+
+#print("Average Treatment Effect")
+#print(ATE_PSS, digits = 3)
+SE_PSS <- sd(ATE_PSS.boot) 
+#print("Bootstrap SE")
+#print(SE_PSS, digits = 3)
+#print("Bootstrap Normal 95% CI")
+print(ATE_PSS + c(-1, 1)*qnorm(0.975)*SE_PSS, digits = 3)
+CI_PSS <- ATE_PSS + c(-1, 1)*qnorm(0.975)*SE_PSS
+
+ps <- predict(p1, type = "response")
+w1 <- imai$PHN.C1/ps
+w0 <- (1-imai$PHN.C1)/(1-ps)
+
+ATE_IPW <- mean(imai$VOTED98*w1) - mean(imai$VOTED98*w0)
+#print(ATE_IPW, digits = 3)
+
+ATE_IPW2 <- weighted.mean(imai$VOTED98, w1) - 
+	weighted.mean(imai$VOTED98, w0)
+#print(ATE_IPW2, digits = 3)
+
+set.seed(1101985)
+B <- 100
+ATE_IPW.boot <- NULL
+ATE_IPW2.boot <- NULL
+n <- nrow(imai)
+for(i in 1:B) {
+  imai.boot <- imai[sample(1:n, n, replace = TRUE), ]
+  p1.boot <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + 
+      MAJORPTY + AGE), 
+  data = imai.boot, family = "binomial")
+  ps.boot <- predict(p1.boot, type = "response")
+  w1.boot <- imai.boot$PHN.C1/ps.boot
+  w0.boot <- (1-imai.boot$PHN.C1)/(1-ps.boot)
+  ATE_IPW.boot <- c(ATE_IPW.boot, 
+    mean(imai.boot$VOTED98*w1.boot) - mean(imai.boot$VOTED98*w0.boot))
+  ATE_IPW2.boot <- c(ATE_IPW2.boot, 
+    weighted.mean(imai.boot$VOTED98, w1.boot) - weighted.mean(imai.boot$VOTED98, w0.boot))
+}
+
+#print("Average Treatment Effect")
+#print(ATE_IPW, digits = 3)
+SE_IPW <- sd(ATE_IPW.boot) 
+#print("Bootstrap SE")
+#print(SE_IPW, digits = 3)
+#print("Bootstrap Normal 95% CI")
+#print(ATE_IPW + c(-1, 1)*qnorm(0.975)*SE_IPW, digits = 3)
+CI_IPW <- ATE_IPW + c(-1, 1)*qnorm(0.975)*SE_IPW
+
+#print("Average Treatment Effect")
+#print(ATE_IPW2, digits = 3)
+SE_IPW2 <- sd(ATE_IPW2.boot) 
+#print("Bootstrap SE")
+#print(SE_IPW2, digits = 3)
+#print("Bootstrap Normal 95% CI")
+#print(ATE_IPW2 + c(-1, 1)*qnorm(0.975)*SE_IPW2, digits = 3)
+CI_IPW2 <- ATE_IPW2 + c(-1, 1)*qnorm(0.975)*SE_IPW2
+```
+## Advantages/Disadvantages of IPW versus regression model
+
+- Both approaches require assuming consistency and no unmeasured confounding 
+- IPW requires assuming positivity
+- IPW requires correctly specifying propensity model; regression approach requires specifying the outcome model
+- IPW: can fit a single model (propensity score) and then obtain causal estimates for several outcomes
+- Perception that modeling treatment allocation "easier" than outcome 
+- IPW tends to be more variably (even without extreme weights)
+
+## Augmented IPW estimators
+
+- If we take the point of view that the propensity score model is correctly specified, then one can use semiparametric theory to show that all consistent and asymptotically normal estimators for $E(Y^1)$ can be written as
+\begin{equation}
+\hat{E}(Y^1) = \tfrac{1}{n} \sum_{i=1}^n \frac{A_iY_i}{\pi(X_i; \hat{\gamma})} - \{A_i - \pi(X_i; \hat{\gamma})\}h(X_i)
+\end{equation}
+- where $h(X_i)$ is any arbitrary function of $X$
+- Show that this is a consistent estimator of $E(Y^1)$ regardless of the choice of $h(X)$
+- This class of estimators is known as augmented IPW estimators
+- Questions: how to choose $h(X)$
+
+## Choosing $h(X)$
+
+- Although all these estimators are consistent for $E(Y^1)$ they will have different variability
+- One can show using semiparametric theory that the choice that leads to the estimator with the smallest asymptotic variance is 
+\begin{equation}
+h(X_i) = \frac{E(Y|A=1, X)}{\pi(X)}
+\end{equation}
+- Let's think through the implication of this choice. Note that $E(Y|A=1, X) = E(Y^1|X)$ under our standard identifying assumptions
+1) When $A_i=0$ (i.e., $Y_i^1$ is unobserved) then the summand in equation (1) is $E(Y_i^1|X_i)$ -- effectively we are imputing the best guess of the potential outcome given covariates
+2) When $A_i=1$ (i.e., $Y_i^1$ is observed) then the summand is $E(Y_i^1|X_i) + \frac{1}{\pi(X_i)}(Y_i^1 - E(Y_i^1|X_i))$
+
+## Choosing $h(X)$
+
+- Showing that
+\begin{equation}
+h(X_i) = \frac{E(Y|A=1, X)}{\pi(X)}
+\end{equation}
+leads to the estimator with the smallest asymptotic variance is DIFFICULT
+- But showing this choice of $h(X)$ leads to an estimator with smaller variance than the standard IPW estimator (i.e., $h(X) = 0$) is more doable 
+
+## Choosing $h(X)$
+
+- Of course, $E(Y|A, X)$ is not known to us (if it were, we would have just used regression modeling to estimate $E(Y^1)$)
+- Nonetheless, just like regression modeling, we can posit a model for $E(Y|A,X) = \mu(A, X; \eta)$ and then obtain an estimate for $\eta$ (say $\hat{\eta}$)
+- We can then plug this estimate into the formula so that the estimator is 
+\begin{equation}
+\hat{E}(Y^1) = \tfrac{1}{n} \sum_{i=1}^n \frac{A_iY_i}{\pi(X_i; \hat{\gamma})} - \frac{\{A_i - \pi(X_i; \hat{\gamma})\}}{\pi(X_i;\hat{\gamma})} \mu(A=1, X_i; \hat{\eta})
+\end{equation}
+
+
+## Doubly Robust Estimator
+
+\begin{equation}
+\hat{E}(Y^1) = \tfrac{1}{n} \sum_{i=1}^n \frac{A_iY_i}{\pi(X_i; \hat{\gamma})} - \frac{\{A_i - \pi(X_i; \hat{\gamma})\}}{\pi(X_i;\hat{\gamma})} \mu(A=1, X_i; \hat{\eta})
+\end{equation}
+
+- Consistent and asymptotically normal if either $\mu(A, X; \eta)$ or $\pi(X; \gamma)$ correctly specified
+- Known as doubly robust or doubly protected estimator
+- Note that if $\mu(A, X; \eta)$  is misspecified, the augmented estimator is no longer guaranteed to have smaller variance than the "standard" IPW estimator
+- Some refer to summand as pseudo-outcome 
+
+## Estimator for $E(Y^0)$
+
+- If we take the point of view that the propensity score model is correctly specified, then one can use semiparametric theory to show that all consistent and asymptotically normal estimators for $E(Y^0)$ can be written as
+\begin{equation}
+\hat{E}(Y^0) = \tfrac{1}{n} \sum_{i=1}^n \frac{(1-A_i)Y_i}{1-\pi(X_i; \hat{\gamma})} - \{1-A_i - (1-\pi(X_i; \hat{\gamma}))\}h(X_i)
+\end{equation}
+- The optimal choice of $h(X_i)$ is then $h(X_i) = \frac{E(Y|A=0, X)}{1-\pi(X)}$
+
+## Form Pseudo-Outcomes for AIPW
+```{r, echo = TRUE, cache = TRUE}
+PO1 <- imai$VOTED98*w1 - ((imai$PHN.C1-ps)/ps)*pred1
+PO0 <- imai$VOTED98*w0 - ((1-imai$PHN.C1-(1-ps))/(1-ps))*pred0
+ATE_AIPW <- mean(PO1 - PO0)
+```
+
+## Voting Example: AIPW Analysss
+```{r, echo = FALSE, cache = TRUE}
+set.seed(1101985)
+B <- 100
+ATE.boot <-  NULL
+n <- nrow(imai)
+for(i in 1:B) {
+  imai.boot <- imai[sample(1:n, n, replace = TRUE), ]
+  m1.boot <- glm(VOTED98 ~ PHN.C1*(PERSONS + VOTE96.1 + 
+      NEW + MAJORPTY + AGE) + WARD, data = imai.boot, 
+    family = "binomial")
+  data_trt.boot <- imai.boot
+  data_trt.boot$PHN.C1 = 1
+  data_ctr.boot <- imai.boot
+  data_ctr.boot$PHN.C1 = 0
+  pred1.boot <- predict(m1.boot, newdata = data_trt.boot, 
+    type = "response")
+  pred0.boot <- predict(m1.boot, newdata = data_ctr.boot, 
+    type = "response")
+  p1.boot <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + 
+      MAJORPTY + AGE), 
+  data = imai.boot, family = "binomial")
+  ps.boot <- predict(p1.boot, type = "response")
+  w1.boot <- imai.boot$PHN.C1/ps.boot
+  w0.boot <- (1-imai.boot$PHN.C1)/(1-ps.boot)
+  
+  PO1.boot <- imai.boot$VOTED98*w1.boot - ((imai.boot$PHN.C1-ps.boot)/ps.boot)*pred1.boot
+  PO0.boot <- imai.boot$VOTED98*w0.boot - ((1-imai.boot$PHN.C1-(1-ps.boot))/(1-ps.boot))*pred0.boot
+
+  ATE.boot <- c(ATE.boot, 
+    mean(PO1.boot - PO0.boot))
+    }
+print("Average Treatment Effect")
+print(ATE_AIPW, digits = 3)
+SE <- sd(ATE.boot) 
+print("Bootstrap SE")
+print(SE, digits = 3)
+print("Bootstrap Normal 95% CI")
+CI_AIPW <- ATE_AIPW + c(-1, 1)*qnorm(0.975)*SE
+print(ATE_AIPW + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
+```
+
+## AIPW Results: Key Assumptions
+
+Identifying
+
+1) Consistency
+2) No Unmeasured confounding
+3) Positivity
+
+Modeling
+
+1) Propensity score model (given all confounders) OR outcome model (given all confounders) correctly specified.
+
+## Putting it All Together
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, cache = TRUE}
+library(forestplot)
+ATE_vector <- c(ATE_unadj, ATE, ATE.ps, ATE_PSS, ATE_IPW, ATE_IPW2, ATE_AIPW)
+CI_matrix <- rbind(CI_unadj, CI, CI.ps, CI_PSS, CI_IPW, CI_IPW2, CI_AIPW)
+
+tabletext<- cbind(c("Method", "Per Protocol", "Regression", "PS Reg", "PSS", "IPW1", "IPW2", "AIPW"),
+	c("ATE", round(ATE_vector, digits = 3)))
+
+
+results <- 
+  structure(list(
+    mean  = c(NA, ATE_vector), 
+    lower = c(NA, CI_matrix[, 1]),
+    upper = c(NA, CI_matrix[, 2])),
+    .Names = c("mean", "lower", "upper"), 
+    row.names = c(NA, -8L), 
+    class = "data.frame")
+  	
+forestplot(tabletext, 
+           results, new_page = TRUE,
+           col=fpColors(box="royalblue",line="darkblue", summary="royalblue"))  	
+```
+
+## Simulation Example
+
+- Let  $X_i \sim N(0,1)$, $Y_i^1 |X_i \sim N(0.5 + \gamma X, 1)$ and $Y_i^0 |X_i \sim N(\gamma X, 1)$.  ATE = $E(Y^1) - E(Y^0) = 0.5$
+- Note that in the "real world" we do not observe $\{ Y_i^1, Y_i^0$ but would observe $Y_i = A_i Y_i^1 + (1-A_i) Y_i^0$. This implies that $Y_i |A_i, X_i \sim (0.5A_i + \gamma X_i, 1)$
+- Let $A_i|X_i \sim \mbox{Bernoulli}(p_i)$ where $p_i = \exp(0 + \alpha X_i)/\{1 + \exp(0+\alpha X_i)\}$
+- Generate a sample of size 500 consistent with this data generating mechanism with $\gamma = 1$ and $\alpha = 1$. 
+- With these coefficients the $R^2$ for regressing the outcome on $X$ in placebo group is 0.5 and C-index for the treatment allocation $\approx$ 0.75 
+- 100 Monte Carlo datasets
+
+## Simulation Results
+
+```{r, echo= FALSE, cache=TRUE}
+set.seed(1101985)
+S <- 100
+n <- 500
+gamma <- 1
+alpha <- 1
+ATE.ipw.total <- NULL
+ATE.reg.total <- NULL
+ATE.aipw.total <- NULL
+for(i in 1:S) {
+  X <- rnorm(n, 0, 1)
+Y1 <- rnorm(n, gamma*X + 0.5, 1)
+Y0 <- rnorm(n, gamma*X, 1)
+A <- rbinom(n, 1, exp(alpha*X)/(1+exp(alpha*X)))
+Y <- Y1*A + Y0*(1-A)
+prop.model <- glm(A ~ X, family = "binomial")
+pred.prop.model <- predict(prop.model, type = "response")
+w1 <- A/pred.prop.model
+w0 <- (1-A)/(1-pred.prop.model)
+ATE.ipw <- mean(Y*w1) - mean(Y*w0)
+ATE.ipw.total <- c(ATE.ipw.total, ATE.ipw)
+reg.model <- lm(Y ~ X + A + X*A)
+data_trt <- data.frame(X = X, A = 1) 
+data_ctr <- data.frame(X = X, A = 0)
+pred1 <- predict(reg.model, newdata = data_trt, type = "response")
+pred0 <- predict(reg.model, newdata = data_ctr, type = "response")
+ATE.reg <- mean(pred1 - pred0)
+ATE.reg.total <- c(ATE.reg.total, ATE.reg)
+
+PO1 <- Y*w1 - ((A-pred.prop.model)/pred.prop.model)*pred1
+PO0 <- Y*w0 - ((1-A-(1-pred.prop.model))/(1-pred.prop.model))*pred0
+ATE.aipw <- mean(PO1) - mean(PO0)
+ATE.aipw.total <- c(ATE.aipw.total, ATE.aipw)
+#print(i)
+}
+bias.ATE <- c(mean(ATE.ipw.total), mean(ATE.reg.total), mean(ATE.aipw.total) ) - 0.5
+sd.ATE <- c(sd(ATE.ipw.total), sd(ATE.reg.total), sd(ATE.aipw.total))
+result <- data.frame(bias = bias.ATE, sd = sd.ATE)
+rownames(result) <- c("IPW", "REG", "AIPW")
+print(result, digits = 3)
+
+```

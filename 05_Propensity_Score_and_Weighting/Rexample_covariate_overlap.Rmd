@@ -1,0 +1,154 @@
+---
+title: "Assessing Overlap and Covariate Balance"
+author: "David M. Vock"
+date: "PubH 7485/8485"
+output: beamer_presentation
+theme: "Boadilla"
+colortheme: "whale"
+fonttheme: "structurebold"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+source("Rexample_covariate_overlap_library.R")
+svyQuant_alt <- function (vars, design, q = 0.5) {
+  res <- vector()
+  for (i in 1:length(vars)) {
+    var <- vars[i]
+    res[i] <- oldsvyquantile(design$variables[var], design = design, 
+      quantiles = q[1], na.rm = TRUE)
+  }
+  out <- as.vector(res)
+  names(out) <- vars
+  out
+}
+
+environment(svyQuant_alt) <- asNamespace('tableone')
+assignInNamespace("svyQuant", svyQuant_alt, ns = "tableone")
+
+data(GerberGreenImai)
+imai <- GerberGreenImai
+
+imai <- mutate(imai,
+  VOTE96.1F = factor(VOTE96.1, labels = c("No", "Yes")),
+  VOTED98F = factor(VOTED98, labels = c("No", "Yes")),
+  NEWF = factor(NEW, labels = c("Previous Voter", "New Voter")),
+  MAJORPTYF = factor(MAJORPTY, labels = c("Republican", "Democrat")),
+  PERSONSF = factor(PERSONS, labels = c("1 Voter", "2+ Voters")),
+  PHN.C1F = factor(PHN.C1, labels = c("Not Contacted", "Contacted")))
+imai <- set_variable_labels(imai,
+	VOTED98F = "Voted in 1998",
+  PHN.C1F = "Contacted by phone", 
+  PERSONSF = "Voters in household", 
+  WARD = "Ward of residence", 
+  AGE = "Age (years)", 
+  MAJORPTYF = "Party affilation", 
+  VOTE96.1F = "Voted in 1996", 
+  NEWF = "New voter" 
+)
+
+p1 <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + MAJORPTY + AGE), 
+  data = imai, family = "binomial")
+
+```
+
+## Unadjusted/Unweighted/Unmatched Table 1
+
+- Using tableone package
+```{r, echo = TRUE}
+vars <- c("VOTED98F", "PERSONSF", "AGE", "VOTE96.1F", 
+  "NEWF", "MAJORPTYF",  "WARD")
+tabUnmatched <- CreateTableOne(vars = vars, strata = "PHN.C1F",
+  data = imai, test = FALSE)
+t1 <- print(tabUnmatched, smd = TRUE, showAllLevels = TRUE, varLabels = TRUE)
+```
+
+## Unadjusted/Unweighted/Unmatched Table 1
+```{r, echo = TRUE, warning = FALSE, size="tiny", results = "asis"}
+knitr::kable(t1)
+```
+
+## Other Graphical Measures
+
+- Standardized mean difference is one measure of differences between groups
+- SMD does not help assess the positivity assumption (covariate overlap)
+- Technically need the entire (joint) distribution to be the same between groups not just measure of central tendancy
+- Thus, plotting data is of key importance; use cobalt and WeightIt packages
+
+## Create WeightIt object
+
+- Set it up to (eventually) do propensity score weighting but for now will do unadjusted analyses
+
+```{r, echo = TRUE}
+W.out <- weightit(PHN.C1 ~ (PERSONSF + VOTE96.1F + NEWF + MAJORPTYF + AGE), data = imai,
+                  method = "ps", estimand = "ATE")
+```
+
+## Create Plots of Distribution of Key Variables
+
+```{r, echo = TRUE, size="tiny", fig.height=4}
+bal.plot(W.out, var.name = "AGE", which = "unadjusted")
+```
+
+
+## Create Plots of Distribution of Key Variables
+
+```{r, echo = TRUE, size="tiny", fig.height=4}
+bal.plot(W.out, var.name = "VOTE96.1F", which = "unadjusted")
+```
+
+
+## Weighted Differences in Key Variables Between Groups
+```{r, echo = TRUE, warning=FALSE, results = "hide", size="tiny"} 
+ps <- predict(p1, type = "response")
+imai$weight <- imai$PHN.C1/ps + (1-imai$PHN.C1)/(1-ps)
+imaiSvy <- svydesign(ids = ~ 1, data = imai, weights = ~ weight)
+
+tabWeighted <- svyCreateTableOne(vars = vars, strata = "PHN.C1F",
+  data = imaiSvy, test = FALSE)
+t2 <- print(tabWeighted, smd = TRUE, showAllLevels = TRUE, varLabels = TRUE)
+```
+
+## Weighted Differences in Key Variables Between Groups
+```{r, echo = TRUE, warning = FALSE, size="tiny", results = "asis"}
+knitr::kable(t2)
+```
+
+## Create Plots of Distribution of Key Variables
+
+```{r, echo = TRUE, size="tiny", fig.height=4}
+bal.plot(W.out, var.name = "AGE")
+```
+
+## Create Plots of Distribution of Key Variables
+
+```{r, echo = TRUE, size="tiny", fig.height=4}
+bal.plot(W.out, var.name = "VOTE96.1F")
+```
+
+## Create WeightIt object
+
+- Are there are other ways of defining weights? YES! Many available as part of weightit
+- Many directly target balance of the covariates
+
+```{r, echo = TRUE, cache= TRUE}
+W.out <- weightit(PHN.C1 ~ (PERSONSF + VOTE96.1F + NEWF + MAJORPTYF + AGE), data = imai,
+                  method = "cbps", estimand = "ATE")
+```
+
+## Create Plots of Distribution of Key Variables
+
+```{r, echo = TRUE, size="tiny", fig.height=4}
+bal.plot(W.out, var.name = "AGE")
+```
+
+## Create Plots of Distribution of Key Variables
+
+```{r, echo = TRUE, size="tiny", fig.height=4}
+bal.plot(W.out, var.name = "VOTE96.1F")
+```

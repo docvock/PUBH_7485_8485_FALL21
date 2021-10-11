@@ -19,7 +19,7 @@ FIGDIR= ./figs
 # list R files
 # RFILES := $(wildcard $(RDIR)/*.R)
 # Indicator files to show R file has run
-OUT_FILES:=  $(RDIR)/README.Rout $(RDIR01)/Lecture_potential_outcomes_intro.Rout $(RDIR02)/Rexample_TableOne_SMD.Rout $(RDIR03)/Lecture_bootstrap.Rout $(RDIR03)/Lecture_theory_basics.Rout $(RDIR04)/Lecture_regression_adjustment.Rout $(RDIR04)/Rexample_flexible_regression.Rout $(RDIR05)/Lecture_propensity_score.Rout
+OUT_FILES:=  $(RDIR)/README.Rout $(RDIR01)/Lecture_potential_outcomes_intro.Rout $(RDIR02)/Rexample_TableOne_SMD.Rout $(RDIR03)/Lecture_bootstrap.Rout $(RDIR03)/Lecture_theory_basics.Rout $(RDIR04)/Lecture_regression_adjustment.Rout $(RDIR04)/Rexample_flexible_regression.Rout $(RDIR05)/Lecture_propensity_score.Rout $(RDIR05)/Lecture_augmented_ipw.Rout $(RDIR05)/Rexample_covariate_overlap.Rout
 
 all: $(OUT_FILES)
 
@@ -47,6 +47,12 @@ $(RDIR04)/Rexample_flexible_regression.Rout: $(RDIR04)/Rexample_flexible_regress
 	
 $(RDIR05)/Lecture_propensity_score.Rout: $(RDIR05)/Lecture_propensity_score.R $(RDIR05)/Lecture_propensity_score.Rmd 
 	R CMD BATCH --slave --vanilla $(RDIR05)/Lecture_propensity_score.R $(RDIR05)/Lecture_propensity_score.Rout
+
+$(RDIR05)/Lecture_augmented_ipw.Rout: $(RDIR05)/Lecture_augmented_ipw.R $(RDIR05)/Lecture_augmented_ipw.Rmd 
+	R CMD BATCH --slave --vanilla $(RDIR05)/Lecture_augmented_ipw.R $(RDIR05)/Lecture_augmented_ipw.Rout
+
+$(RDIR05)/Rexample_covariate_overlap.Rout: $(RDIR05)/Rexample_covariate_overlap.R $(RDIR05)/Rexample_covariate_overlap.Rmd 
+	R CMD BATCH --slave --vanilla $(RDIR05)/Rexample_covariate_overlap.R $(RDIR05)/Rexample_covariate_overlap.Rout
 
 # Clean up stray files
 #clean:
