@@ -1,0 +1,558 @@
+---
+title: "Matching and ATT Estimators"
+author: "David M. Vock"
+date: "PubH 7485/8485"
+output: beamer_presentation
+theme: "Boadilla"
+colortheme: "whale"
+fonttheme: "structurebold"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+def.chunk.hook  <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- def.chunk.hook(x, options)
+  ifelse(options$size != "normalsize", paste0("\\", options$size,"\n\n", x, "\n\n \\normalsize"), x)
+})
+
+source("Lecture_matching_library.R")
+
+svyQuant_alt <- function (vars, design, q = 0.5) {
+  res <- vector()
+  for (i in 1:length(vars)) {
+    var <- vars[i]
+    res[i] <- oldsvyquantile(design$variables[var], design = design, 
+      quantiles = q[1], na.rm = TRUE)
+  }
+  out <- as.vector(res)
+  names(out) <- vars
+  out
+}
+
+environment(svyQuant_alt) <- asNamespace('tableone')
+assignInNamespace("svyQuant", svyQuant_alt, ns = "tableone")
+
+data(GerberGreenImai)
+imai <- GerberGreenImai
+
+imai <- mutate(imai,
+  VOTE96.1F = factor(VOTE96.1, labels = c("No", "Yes")),
+  VOTED98F = factor(VOTED98, labels = c("No", "Yes")),
+  NEWF = factor(NEW, labels = c("Previous Voter", "New Voter")),
+  MAJORPTYF = factor(MAJORPTY, labels = c("Republican", "Democrat")),
+  PERSONSF = factor(PERSONS, labels = c("1 Voter", "2+ Voters")),
+  PHN.C1F = factor(PHN.C1, labels = c("Not Contacted", "Contacted")))
+imai <- set_variable_labels(imai,
+	VOTED98F = "Voted in 1998",
+  PHN.C1F = "Contacted by phone", 
+  PERSONSF = "Voters in household", 
+  WARD = "Ward of residence", 
+  AGE = "Age (years)", 
+  MAJORPTYF = "Party affilation", 
+  VOTE96.1F = "Voted in 1996", 
+  NEWF = "New voter" 
+)
+
+p1 <- mean(imai$VOTED98[imai$PHN.C1 == 1])
+p0 <- mean(imai$VOTED98[imai$PHN.C1 == 0])
+n1 <- table(imai$PHN.C1)[2]
+n0 <- table(imai$PHN.C1)[1]
+#print("Unadjusted ATE")
+ATE_unadj <- p1 -  p0
+#print(ATE_unadj, digits = 3)
+#print("Standard Error")
+SE <- sqrt(p1*(1-p1)/n1 + p0*(1-p0)/n0)
+#print(SE, digits = 3)
+#print("95% CI")
+CI_unadj <- p1 - p0 + c(-1, 1)*qnorm(0.975)*SE
+#print(p1 - p0 + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
+
+vars <- c("VOTED98F", "PERSONSF", "AGE", "VOTE96.1F", 
+  "NEWF", "MAJORPTYF",  "WARD")
+tabUnmatched <- CreateTableOne(vars = vars, strata = "PHN.C1F",
+  data = imai, test = FALSE)
+t1 <- print(tabUnmatched, smd = TRUE, showAllLevels = TRUE, varLabels = TRUE)
+```
+
+## Overview
+
+-  Define matching as "any method that aims to equate (or "balance") the distribution of covariates in the treated and control groups"
+- Any study of the effect of some intervention has two stages (1) design and (2) outcome analysis; matching belongs in the first stage 
+- Note that this can be done in both non-experimental and experimental studies (blocking)
+
+## Two major settings
+
+1) Outcome not available but want to select a subset of subjects for (expensive) followup 
+2) All outcome data available but the goal of matching is to reduce bias in estimation of some treatment effect
+
+Importantly, regardless of whether the outcome data are available, they should not be used in the matching process
+
+## Key Decision in Matching
+
+1) Define "closeness" -  the distance measure used to determine whether an individual is a good match for another.
+2) Implement a matching algorithm (e.g., nearest neighbor, optimal matching, etc.)
+3) Asses the quality of the matching (perhaps iterate between 1 and 2 to improve)
+4) Analysis of outcome data
+
+## Distance Metrics Commonly used
+
+Let $D_{ij}$ be the distance between the $i^{th}$ and $j^{th}$ subjects
+
+1) Exact: $D_{ij} = 0$ if $X_i = X_j$ and $D_{ij} = \infty$ otherwise
+2) Mahalanobis: $D_{ij} = (X_i - X_j)^T \Sigma^{-1} (X_i-X_j)$  If interest is in the ATT, $\Sigma$ is the variance matrix of $X$ is the full control group, if interest is in the ATE then $\Sigma$ is the variance matrix in the pooled treatment and control group. Categorical variables should be converted to series of binary ones 
+3) Propensity Score: $D_{ij} = |e_i - e_j|$ where $e_k$ is the propensity score of the $k^{th}$ individual (note: some use logit of the propensity score)
+
+Big idea of a distance metric is to take a large number of covariates and summarize the "closeness" among individuals with a single number 
+
+## Propensity Score as Balancing Score
+
+- Why does matching on propensity score "work"?
+- Recall that the propensity score is a balancing score - the distribution of covariates in the treated and control groups is the same at each level of the propensity score
+
+
+## Notes on distance metrics
+
+- Exact matching is difficult with more than a handful of categorical covariates - several subjects could be unmatched leading to bias
+- When exact matching is not possible for even a small number of covariates, matching algorithms that lead to fine balance (e.g., proportion of a categorical covariate in treated and controls the same) may be used
+- Distance metrics can be combined! Frequently, use exact matching for a small number of covariates and Mahalanobis or propensity score for the rest
+- Exact and Mahalanobis distances tend to not perform well when the covariate dimension is high
+
+## Matching Algorithms
+
+- Why need an algorithm? 
+
+## k:1 nearest neighbor matching
+
+- Subjects in the treatment group are matched to the k subjects in the control with the closest distance
+- Always estimates the ATT as it matches control subjects to the treated ones and discards controls who are not selected for matches
+- Need to choose k. Larger k reduces variability (using more data) but smaller k gives better matches reducing bias
+- Sometimes use caliper - i.e., if no match is within $c$ of the treated subject then that subject is not matched. Hard to interpret if lots of subjects are not matched
+- Can be done with replacement (better matches, but more challenging inference in the analysis phase) or without replacement 
+
+## (Sparse) Optimal Matching
+
+- Subjects in the treatment group are matched to the subjects in the control 
+- Always estimates the ATT as it matches control subjects to the treated ones and discards controls who are not selected for matches
+- Look at all possible pairs of matches (possibly within subgroups defined by exact matches) and pick the matches that lead to some optimal criteria (e.g., smallest average distance)
+- Can be cast as a network flow optimization problem 
+
+## Subclassification Matching
+
+- Propensity score stratification is one type but can cast this as a matching algorithm
+- Groups of subjects who are similar (e.g., have similar propensity score) are "matched" 
+- Can be used to estimate the ATE or ATT
+
+## Full Matching
+
+- More refined version of subclassification matching, selects the subclasses automatically
+- Full matching creates a series of matched sets, where each matched set contains at least one treated individual and at least one control individual (and each matched set may have many from either group).
+- Can be used to estimate the ATE or ATT
+
+## Assessing Matching
+
+- Propensity score matching only guarantees balance on average (i.e., with large samples). Still may have imbalance in some covariates after matching
+- Important to examine the standardized mean difference before and after matching
+- Those covariates with SMD > 0.1 after matching - can adjust for in the analysis or categorize them and exact match on those categories
+- Some advocate looking at other moments (e.g., ratio of the variance) or empirical distribution
+
+## Analysis of Outcome
+
+- Matching by itself does not give a causal estimate
+- Matching methods are not designed to compete with modeling adjustments such as linear regression, and, in fact, the two methods have been shown to work best in combination  -- double robustness
+- Similar to regression adjustment in randomized experiments, where the regression adjustment is used to "clean up" small residual covariate imbalance between the groups
+- Debate about whether the analysis needs to account for the matched pair nature of the data --  more common to simply pool all the matches into matched treated and control groups and run analyses using the groups as a whole, rather than using the individual matched pairs
+
+## Variance Estimation
+
+- Highly debated topic
+- Key question is whether to account for uncertainty in the propensity score estimation and the matching procedure
+- As in inverse probability weighting, ignoring estimation of the coefficients in the propensity score is conservative. Typically do not account for uncertainty in covariate estimation in the propensity score
+- Not a lot of good methods to account for variability in the matching methods - some bootstrap and empirical formulas but not widely used
+
+## Average Treatment Effect Among Treated
+
+- Want to use nearest neighbor matching on the get out the vote dataset
+- Always estimates the ATT as it matches control subjects to the treated ones and discards controls who are not selected for matches
+- Will briefly describe how we can adapt other methods (regression adjustment, inverse weighting, etc.)
+
+## Average Treatment Effect Among Treated
+
+- Regression adjustment: Get predicted value for each individual in the TREATED GROUP assuming that they are (a) in the treatment group and (b) in the control group and then take the difference in the mean predicted value to get estimate of ATT.
+- Propensity score stratification: Form strata using quintiles of ps in TREATED GROUP. Weight by $n_{Aj}/n_A$ where $n_A$ is number in treated group and $n_{Aj}$ is number of treated in stratum $j$.
+- IPW: Weights for treated subjects are 1 and for control are $\pi(X_i)(1-A_i)/\{1-\pi(X_i)\}$ (must use IPW2 here)
+
+## Putting it All Together: ATT
+```{r, echo = FALSE, cache = TRUE}
+m1 <- glm(VOTED98 ~ PHN.C1*(PERSONS + VOTE96.1 + NEW + MAJORPTY + AGE) + WARD, data = imai, family = "binomial")
+p1 <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + MAJORPTY + 
+		AGE + WARD), data = imai, family = "binomial")
+data_trt <- data_ctr <-imai[imai$PHN.C1 == 1, ]
+data_trt$PHN.C1 = 1
+data_ctr$PHN.C1 = 0
+pred1 <- predict(m1, newdata = data_trt, type = "response")
+pred0 <- predict(m1, newdata = data_ctr, type = "response")
+ATT <- mean(pred1 - pred0)
+#print(ATT, digits = 3)
+
+imai$ps <- predict(p1, type = "response")
+m1.ps <- glm(VOTED98 ~ PHN.C1*rcs(ps, 5), data = imai, family = "binomial")
+data_trt_alt <- data_ctr_alt <-imai
+data_trt_alt$PHN.C1 = 1
+data_ctr_alt$PHN.C1 = 0
+pred1.ps <- predict(m1.ps, newdata = data_trt_alt, type = "response")
+pred0.ps <- predict(m1.ps, newdata = data_ctr_alt, type = "response")
+ATT.ps <- mean(pred1.ps[imai$PHN.C1 == 1] - pred0.ps[imai$PHN.C1 == 1])
+#print(ATT.ps, digits = 3)
+
+ps <- predict(p1, type = "response")
+w1 <- imai$PHN.C1
+w0 <- (1-imai$PHN.C1)/(1-ps)*ps
+ATT_IPW <- weighted.mean(imai$VOTED98, w = w1) - 
+	weighted.mean(imai$VOTED98, w=w0)
+#print(ATT_IPW, digits = 3)
+
+pred1_alt <- predict(m1, newdata = data_trt_alt, type = "response")
+pred0_alt <- predict(m1, newdata = data_ctr_alt, type = "response")
+w1_alt <- imai$PHN.C1/ps
+w0_alt <- (1-imai$PHN.C1)/(1-ps)
+PO1 <- imai$VOTED98*w1_alt - ((imai$PHN.C1-ps)/ps)*pred1_alt
+PO0 <- imai$VOTED98*w0_alt - ((1-imai$PHN.C1-(1-ps))/(1-ps))*pred0_alt
+ATT_AIPW <- weighted.mean(PO1 - PO0, ps)
+#print(ATT_AIPW, digits = 3)
+
+ps_quintile <- cut(ps, 
+	breaks = c(0, quantile(ps[imai$PHN.C1 == 1], p = c(0.2, 0.4, 0.6, 0.8)), 1), labels = 1:5)
+nA <- nrow(imai[imai$PHN.C1 == 1, ])
+nAj <- table(ps_quintile[imai$PHN.C1 == 1])
+te_quintile <- tapply(imai$VOTED98[imai$PHN.C1 == 1], ps_quintile[imai$PHN.C1 == 1], mean) -
+	tapply(imai$VOTED98[imai$PHN.C1 == 0], ps_quintile[imai$PHN.C1 == 0], mean)
+ATT_PSS <- sum(te_quintile *nAj/nA)
+#print(round(ATT_PSS, 3))
+
+set.seed(1101985)
+B <- 100
+ATT.boot <- NULL
+ATT.ps.boot <- NULL
+ATT_PSS.boot <- NULL
+ATT_IPW.boot <- NULL
+ATT_AIPW.boot <- NULL
+
+n <- nrow(imai)
+for(i in 1:B) {
+  imai.boot <- imai[sample(1:n, n, replace = TRUE), ]
+  m1.boot <- glm(VOTED98 ~ PHN.C1*(PERSONS + VOTE96.1 + NEW + MAJORPTY + AGE) + WARD, 
+  	data = imai.boot, 
+  	family = "binomial")
+  p1.boot <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + MAJORPTY + 
+		AGE + WARD), data = imai.boot, family = "binomial")
+  data_trt.boot <- data_ctr.boot <-imai.boot[imai.boot$PHN.C1 == 1, ]
+  data_trt.boot$PHN.C1 = 1
+  data_ctr.boot$PHN.C1 = 0
+  pred1.boot <- predict(m1.boot, newdata = data_trt.boot, type = "response")
+  pred0.boot <- predict(m1.boot, newdata = data_ctr.boot, type = "response")
+  ATT.boot <- c(ATT.boot, mean(pred1.boot - pred0.boot))
+  
+  imai.boot$ps <- predict(p1.boot, type = "response")
+  m1.ps.boot <- glm(VOTED98 ~ PHN.C1*rcs(ps, 5), data = imai.boot, family = "binomial")
+  data_trt_alt.boot <- data_ctr_alt.boot <-imai.boot
+  data_trt_alt.boot$PHN.C1 = 1
+  data_ctr_alt.boot$PHN.C1 = 0
+  pred1.ps.boot <- predict(m1.ps.boot, newdata = data_trt_alt.boot, type = "response")
+  pred0.ps.boot <- predict(m1.ps.boot, newdata = data_ctr_alt.boot, type = "response")
+  ATT.ps.boot <- c(ATT.ps.boot, mean(pred1.ps.boot[imai.boot$PHN.C1 == 1] - 
+  		pred0.ps.boot[imai.boot$PHN.C1 == 1]))
+  
+  ps.boot <- predict(p1.boot, type = "response")
+  w1.boot <- imai.boot$PHN.C1
+  w0.boot <- (1-imai.boot$PHN.C1)/(1-ps.boot)*ps.boot
+  ATT_IPW.boot <- c(ATT_IPW.boot, weighted.mean(imai.boot$VOTED98, w = w1.boot) - 
+  	weighted.mean(imai.boot$VOTED98, w=w0.boot))
+
+  pred1_alt.boot <- predict(m1.boot, newdata = data_trt_alt.boot, type = "response")
+  pred0_alt.boot <- predict(m1.boot, newdata = data_ctr_alt.boot, type = "response")
+  w1_alt.boot <- imai.boot$PHN.C1/ps.boot
+  w0_alt.boot <- (1-imai.boot$PHN.C1)/(1-ps.boot)
+  PO1.boot <- imai.boot$VOTED98*w1_alt.boot - ((imai.boot$PHN.C1-ps.boot)/ps.boot)*pred1_alt.boot
+  PO0.boot <- imai.boot$VOTED98*w0_alt.boot - ((1-imai.boot$PHN.C1-(1-ps.boot))/(1-ps.boot))*pred0_alt.boot
+  ATT_AIPW.boot <- c(ATT_AIPW.boot, weighted.mean(PO1.boot - PO0.boot, ps.boot))
+  
+  ps_quintile.boot <- cut(ps.boot, 
+	breaks = c(0, quantile(ps.boot[imai.boot$PHN.C1 == 1], p = c(0.2, 0.4, 0.6, 0.8)), 1), labels = 1:5)
+  nA.boot <- nrow(imai.boot[imai.boot$PHN.C1 == 1, ])
+  nAj.boot <- table(ps_quintile.boot[imai.boot$PHN.C1 == 1])
+  te_quintile.boot <- tapply(imai.boot$VOTED98[imai.boot$PHN.C1 == 1], 
+  	ps_quintile.boot[imai.boot$PHN.C1 == 1], mean) -
+	tapply(imai.boot$VOTED98[imai.boot$PHN.C1 == 0], ps_quintile.boot[imai.boot$PHN.C1 == 0], mean)
+  ATT_PSS.boot <- c(ATT_PSS.boot, sum(te_quintile.boot *nAj.boot/nA.boot))
+  #print(i)
+}
+
+CI <- ATT + c(-1, 1)*qnorm(0.975)*sd(ATT.boot)
+CI.ps <- ATT.ps + c(-1, 1)*qnorm(0.975)*sd(ATT.ps.boot)
+CI_PSS <- ATT_PSS + c(-1, 1)*qnorm(0.975)*sd(ATT_PSS.boot)
+CI_IPW <- ATT_IPW + c(-1, 1)*qnorm(0.975)*sd(ATT_IPW.boot)
+CI_AIPW <- ATT_AIPW + c(-1, 1)*qnorm(0.975)*sd(ATT_AIPW.boot)
+
+ATT_vector <- c(ATE_unadj, ATT, ATT.ps, ATT_PSS, ATT_IPW, ATT_AIPW)
+CI_matrix <- rbind(CI_unadj, CI, CI.ps, CI_PSS, CI_IPW, CI_AIPW)
+
+tabletext<- cbind(c("Method", "Unadjusted", "Regression", "PS Reg", "PSS", "IPW", "AIPW"),
+	c("ATT", round(ATT_vector, digits = 3)))
+
+
+results <- 
+  structure(list(
+    mean  = c(NA, ATT_vector), 
+    lower = c(NA, CI_matrix[, 1]),
+    upper = c(NA, CI_matrix[, 2])),
+    .Names = c("mean", "lower", "upper"), 
+    row.names = c(NA, -7L), 
+    class = "data.frame")
+  	
+forestplot(tabletext, 
+           results, new_page = TRUE,
+           col=fpColors(box="royalblue",line="darkblue", summary="royalblue")) 
+```
+
+
+## Propensity Score Matching
+
+- k:1 propensity score matching where we will alter k. Use exact matching on WARD
+- Nearest neighbor matching on the logit scale without replacement. Treated subjects matched in order of the propensity score (largest to smallest).
+- No caliper used
+- Use MatchIt package in R
+
+## Unmatched Differences in Key Variables Between Groups
+```{r, echo = TRUE, warning = FALSE, size="tiny", results = "asis"}
+knitr::kable(t1)
+```
+
+## 1:1 Matching
+
+```{r, echo = TRUE, cache=TRUE, warning = FALSE}
+library(MatchIt)
+rownames(imai) <- 1:nrow(imai)
+mod_match <- matchit(PHN.C1 ~ PERSONSF + VOTE96.1F + NEWF + 
+		MAJORPTYF + AGE, distance = "logit",
+	method = "nearest", data = imai, exact = c("WARD"), 
+	ratio = 1)
+print(tail(mod_match$match.matrix))
+```
+
+## Check for Balance 1:1 Matching
+
+```{r, echo = TRUE, cache = TRUE, results = "hide"}
+imai_match <- data.frame(rbind(imai[imai$PHN.C1 == 1, ],
+	imai[as.numeric(mod_match$match.matrix), ]))
+tabmatched1.1 <- CreateTableOne(vars = vars, strata = "PHN.C1",
+	data = imai_match, test = FALSE)
+t2 <- print(tabmatched1.1, smd = TRUE, showAllLevels = TRUE, 
+						varLabels = TRUE)
+```
+
+## 1:1 Matching: Differences in Key Variables Between Groups
+```{r, echo = TRUE, warning = FALSE, size="tiny", results = "asis"}
+knitr::kable(t2)
+```
+
+## Graphically Assess Matching
+```{r, echo = TRUE, cache = TRUE}
+plot(mod_match, type = "hist")
+```
+
+## Graphically Assess Matching
+```{r, echo = TRUE, cache = TRUE}
+plot(mod_match, type = "QQ", which.xs = c("AGE"))
+```
+
+## Results 1:1 Matching
+```{r, echo = FALSE, cache = TRUE}
+p1 <- mean(imai$VOTED98[imai$PHN.C1 == 1])
+p0 <- mean(imai$VOTED98[as.numeric(mod_match$match.matrix)])
+n1 <- table(imai$PHN.C1)[2]
+n0 <- length(as.numeric(mod_match$match.matrix))
+#n0 <- table(imai$PHN.C1)[1]
+print("1:1 Match ATT")
+ATT1match <- p1 -  p0
+print(p1 -  p0, digits = 3)
+print("Standard Error")
+SE <- sqrt(p1*(1-p1)/n1 + p0*(1-p0)/n0)
+print(SE, digits = 3)
+print("95% CI")
+CI1match <- p1 - p0 + c(-1, 1)*qnorm(0.975)*SE
+print(p1 - p0 + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
+```
+
+## Check for Balance 4:1 Matching
+
+```{r, echo = TRUE, cache = TRUE, results = "hide"}
+mod_match <- matchit(PHN.C1 ~ PERSONSF + VOTE96.1F + NEWF + 
+		MAJORPTYF + AGE, distance = "logit",
+	method = "nearest", data = imai, exact = c("WARD"), 
+	ratio = 4)
+print(tail(mod_match$match.matrix))
+
+imai_match <- data.frame(rbind(imai[imai$PHN.C1 == 1, ],
+	imai[as.numeric(mod_match$match.matrix), ]))
+tabmatched4.1 <- CreateTableOne(vars = vars, strata = "PHN.C1",
+	data = imai_match, test = FALSE)
+t3 <- print(tabmatched4.1, smd = TRUE, showAllLevels = TRUE, 
+						varLabels = TRUE)
+```
+
+## 4:1 Matching: Differences in Key Variables Between Groups
+```{r, echo = TRUE, warning = FALSE, size="tiny", results = "asis"}
+knitr::kable(t3)
+```
+
+
+## Results 4:1 Matching
+```{r, echo = FALSE, cache = TRUE}
+p1 <- mean(imai$VOTED98[imai$PHN.C1 == 1])
+p0 <- mean(imai$VOTED98[as.numeric(mod_match$match.matrix)])
+n1 <- table(imai$PHN.C1)[2]
+n0 <- length(as.numeric(mod_match$match.matrix))
+#n0 <- table(imai$PHN.C1)[1]
+print("4:1 Match ATT")
+ATT4match <- p1 - p0 
+print(p1 -  p0, digits = 3)
+print("Standard Error")
+SE <- sqrt(p1*(1-p1)/n1 + p0*(1-p0)/n0)
+print(SE, digits = 3)
+print("95% CI")
+CI4match <- p1 - p0 + c(-1, 1)*qnorm(0.975)*SE
+print(p1 - p0 + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
+```
+
+## Check for Balance 10:1 Matching
+
+```{r, echo = TRUE, results = "hide", cache = TRUE}
+mod_match <- matchit(PHN.C1 ~ PERSONSF + VOTE96.1F + NEWF + 
+		MAJORPTYF + AGE, distance = "logit",
+	method = "nearest", data = imai, exact = c("WARD"), 
+	ratio = 10)
+print(tail(mod_match$match.matrix))
+
+imai_match <- data.frame(rbind(imai[imai$PHN.C1 == 1, ],
+	imai[as.numeric(mod_match$match.matrix), ]))
+tabmatched10.1 <- CreateTableOne(vars = vars, strata = "PHN.C1",
+	data = imai_match, test = FALSE)
+t4 <- print(tabmatched10.1, smd = TRUE, showAllLevels = TRUE, 
+						varLabels = TRUE)
+```
+
+## 10:1 Matching: Differences in Key Variables Between Groups
+```{r, echo = TRUE, warning = FALSE, size="tiny", results = "asis"}
+knitr::kable(t4)
+```
+
+
+## Results 10:1 Matching
+```{r, echo = FALSE, cache = TRUE}
+p1 <- mean(imai$VOTED98[imai$PHN.C1 == 1])
+p0 <- mean(imai$VOTED98[as.numeric(mod_match$match.matrix)])
+n1 <- table(imai$PHN.C1)[2]
+n0 <- length(as.numeric(mod_match$match.matrix))
+#n0 <- table(imai$PHN.C1)[1]
+print("10:1 Match ATT")
+ATT10match <- p1 -  p0
+print(p1 -  p0, digits = 3)
+print("Standard Error")
+SE <- sqrt(p1*(1-p1)/n1 + p0*(1-p0)/n0)
+print(SE, digits = 3)
+print("95% CI")
+CI10match <- p1 - p0 + c(-1, 1)*qnorm(0.975)*SE
+print(p1 - p0 + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
+```
+
+## Plot of SMD
+
+```{r, echo = TRUE, size="tiny", results = "hide"}
+p1 <- glm(PHN.C1 ~ (PERSONS + VOTE96.1 + NEW + MAJORPTY + 
+		AGE + WARD), data = imai, family = "binomial")
+ps <- predict(p1, type = "response")
+imai$weight <- imai$PHN.C1 + (1-imai$PHN.C1)/(1-ps)*ps
+imaiSvy <- svydesign(ids = ~ 1, data = imai, weights = ~ weight)
+tabWeighted <- svyCreateTableOne(vars = vars, strata = "PHN.C1F",
+  data = imaiSvy, test = FALSE)
+dataPlot <- data.frame(variable  = rownames(ExtractSmd(tabUnmatched)),
+	Unweighted = as.numeric(ExtractSmd(tabUnmatched)),
+	Weighted_logit  = as.numeric(ExtractSmd(tabWeighted)),
+	Matched1_1 = as.numeric(ExtractSmd(tabmatched1.1)),
+	Matched4_1 = as.numeric(ExtractSmd(tabmatched4.1)),
+	Matched10_1 = as.numeric(ExtractSmd(tabmatched10.1)))
+dataPlot <- dplyr::filter(dataPlot, 
+                          variable != "VOTED98F")
+
+## Create long-format data for ggplot2
+dataPlotMelt <- melt(data          = dataPlot,
+	id.vars       = c("variable"),
+	variable.name = "Method",
+	value.name    = "SMD")
+
+## Order variable names by magnitude of SMD
+varNames <- as.character(dataPlot$variable)[order(dataPlot$Unweighted)]
+
+## Order factor levels in the same order
+dataPlotMelt$variable <- factor(dataPlotMelt$variable,
+	levels = varNames)
+
+## Plot using ggplot2
+ggplot(data = dataPlotMelt,
+	mapping = aes(x = variable, y = SMD, group = Method, color = Method)) +
+	geom_line() +
+	geom_point() +
+	geom_hline(yintercept = 0.1, color = "black", size = 0.1) +
+	coord_flip() +
+	theme_bw() + theme(legend.key = element_blank())
+```
+
+## Plot of SMD
+
+```{r, echo = FALSE}
+ggplot(data = dataPlotMelt,
+	mapping = aes(x = variable, y = SMD, group = Method, color = Method)) +
+	geom_line() +
+	geom_point() +
+	geom_hline(yintercept = 0.1, color = "black", size = 0.1) +
+	coord_flip() +
+	theme_bw() + theme(legend.key = element_blank())
+```
+
+## Putting it All Together: ATT
+
+```{r, echo = FALSE, cache = TRUE}
+ATT_vector <- c(ATE_unadj, ATT, ATT.ps, ATT_PSS, ATT_IPW, ATT_AIPW, ATT1match, ATT4match, ATT10match)
+CI_matrix <- rbind(CI_unadj, CI, CI.ps, CI_PSS, CI_IPW, CI_AIPW, CI1match, CI4match, CI10match)
+
+tabletext<- cbind(c("Method", "Per Protocol", "Regression", "PS Reg", "PSS", "IPW", "AIPW", "1:1 Match", "4:1 Match", 
+	"10:1 Match"),
+	c("ATT", round(ATT_vector, digits = 3)))
+
+
+results <- 
+  structure(list(
+    mean  = c(NA, ATT_vector), 
+    lower = c(NA, CI_matrix[, 1]),
+    upper = c(NA, CI_matrix[, 2])),
+    .Names = c("mean", "lower", "upper"), 
+    row.names = c(NA, -10L), 
+    class = "data.frame")
+  	
+forestplot(tabletext, 
+           results, new_page = TRUE,
+           col=fpColors(box="royalblue",line="darkblue", summary="royalblue")) 
+```
+
+## PS Matching Results: Key Assumptions
+
+Identifying
+
+1) Consistency
+2) No Unmeasured confounding
+
+Modeling
+
+1) Propensity score model (given all confounders) correctly specified.
+

@@ -97,19 +97,37 @@ The following object is masked from 'package:lattice':
     melanoma
 
 
+Attaching package: 'vip'
 
-processing file: Lecture_regression_adjustment.Rmd
-output file: Lecture_regression_adjustment.knit.md
+The following object is masked from 'package:utils':
 
+    vi
 
-Output created: Lecture_regression_adjustment.pdf
+ cobalt (Version 4.3.1, Build Date: 2021-03-30 09:50:18 UTC)
 
+Attaching package: 'cobalt'
 
-processing file: Rexample_flexible_regression.Rmd
+The following object is masked from 'package:MatchIt':
+
+    lalonde
+
+Loading required package: nnet
+Loading required package: numDeriv
+Loading required package: glmnet
+Loaded glmnet 4.1-2
+CBPS: Covariate Balancing Propensity Score
+Version: 0.22
+Authors: Christian Fong [aut, cre],
+  Marc Ratkovic [aut],
+  Kosuke Imai [aut],
+  Chad Hazlett [ctb],
+  Xiaolin Yang [ctb],
+  Sida Peng [ctb]
+
 
 output file: README.md
 
 [1] "README.md"
 > proc.time()
    user  system elapsed 
- 13.046   3.101  46.363 
+  3.041   0.441   4.361 
