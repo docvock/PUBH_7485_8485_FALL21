@@ -330,7 +330,7 @@ knitr::kable(t1)
 
 ## 1:1 Matching
 
-```{r, echo = TRUE, cache=TRUE, warning = FALSE}
+```{r, echo = TRUE, warning = FALSE}
 library(MatchIt)
 rownames(imai) <- 1:nrow(imai)
 mod_match <- matchit(PHN.C1 ~ PERSONSF + VOTE96.1F + NEWF + 
@@ -342,7 +342,7 @@ print(tail(mod_match$match.matrix))
 
 ## Check for Balance 1:1 Matching
 
-```{r, echo = TRUE, cache = TRUE, results = "hide"}
+```{r, echo = TRUE, results = "hide"}
 imai_match <- data.frame(rbind(imai[imai$PHN.C1 == 1, ],
 	imai[as.numeric(mod_match$match.matrix), ]))
 tabmatched1.1 <- CreateTableOne(vars = vars, strata = "PHN.C1",
@@ -357,17 +357,17 @@ knitr::kable(t2)
 ```
 
 ## Graphically Assess Matching
-```{r, echo = TRUE, cache = TRUE}
+```{r, echo = TRUE}
 plot(mod_match, type = "hist")
 ```
 
 ## Graphically Assess Matching
-```{r, echo = TRUE, cache = TRUE}
+```{r, echo = TRUE}
 plot(mod_match, type = "QQ", which.xs = c("AGE"))
 ```
 
 ## Results 1:1 Matching
-```{r, echo = FALSE, cache = TRUE}
+```{r, echo = FALSE}
 p1 <- mean(imai$VOTED98[imai$PHN.C1 == 1])
 p0 <- mean(imai$VOTED98[as.numeric(mod_match$match.matrix)])
 n1 <- table(imai$PHN.C1)[2]
@@ -386,7 +386,7 @@ print(p1 - p0 + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
 
 ## Check for Balance 4:1 Matching
 
-```{r, echo = TRUE, cache = TRUE, results = "hide"}
+```{r, echo = TRUE, results = "hide"}
 mod_match <- matchit(PHN.C1 ~ PERSONSF + VOTE96.1F + NEWF + 
 		MAJORPTYF + AGE, distance = "logit",
 	method = "nearest", data = imai, exact = c("WARD"), 
@@ -408,7 +408,7 @@ knitr::kable(t3)
 
 
 ## Results 4:1 Matching
-```{r, echo = FALSE, cache = TRUE}
+```{r, echo = FALSE}
 p1 <- mean(imai$VOTED98[imai$PHN.C1 == 1])
 p0 <- mean(imai$VOTED98[as.numeric(mod_match$match.matrix)])
 n1 <- table(imai$PHN.C1)[2]
@@ -427,7 +427,7 @@ print(p1 - p0 + c(-1, 1)*qnorm(0.975)*SE, digits = 3)
 
 ## Check for Balance 10:1 Matching
 
-```{r, echo = TRUE, results = "hide", cache = TRUE}
+```{r, echo = TRUE, results = "hide"}
 mod_match <- matchit(PHN.C1 ~ PERSONSF + VOTE96.1F + NEWF + 
 		MAJORPTYF + AGE, distance = "logit",
 	method = "nearest", data = imai, exact = c("WARD"), 
@@ -449,7 +449,7 @@ knitr::kable(t4)
 
 
 ## Results 10:1 Matching
-```{r, echo = FALSE, cache = TRUE}
+```{r, echo = FALSE}
 p1 <- mean(imai$VOTED98[imai$PHN.C1 == 1])
 p0 <- mean(imai$VOTED98[as.numeric(mod_match$match.matrix)])
 n1 <- table(imai$PHN.C1)[2]
@@ -522,7 +522,7 @@ ggplot(data = dataPlotMelt,
 
 ## Putting it All Together: ATT
 
-```{r, echo = FALSE, cache = TRUE}
+```{r, echo = FALSE}
 ATT_vector <- c(ATE_unadj, ATT, ATT.ps, ATT_PSS, ATT_IPW, ATT_AIPW, ATT1match, ATT4match, ATT10match)
 CI_matrix <- rbind(CI_unadj, CI, CI.ps, CI_PSS, CI_IPW, CI_AIPW, CI1match, CI4match, CI10match)
 

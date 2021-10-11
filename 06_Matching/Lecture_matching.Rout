@@ -34,9 +34,8 @@ List of 4
 
   |                                                                              |...............                                                       |  22%
 label: unnamed-chunk-3 (with options) 
-List of 3
+List of 2
  $ echo   : logi TRUE
- $ cache  : logi TRUE
  $ warning: logi FALSE
 
   |                                                                              |.................                                                     |  24%
@@ -44,9 +43,8 @@ List of 3
 
   |                                                                              |...................                                                   |  27%
 label: unnamed-chunk-4 (with options) 
-List of 3
+List of 2
  $ echo   : logi TRUE
- $ cache  : logi TRUE
  $ results: chr "hide"
 
   |                                                                              |.....................                                                 |  30%
@@ -65,36 +63,32 @@ List of 4
 
   |                                                                              |..........................                                            |  38%
 label: unnamed-chunk-6 (with options) 
-List of 2
- $ echo : logi TRUE
- $ cache: logi TRUE
+List of 1
+ $ echo: logi TRUE
 
   |                                                                              |............................                                          |  41%
   ordinary text without R code
 
   |                                                                              |..............................                                        |  43%
 label: unnamed-chunk-7 (with options) 
-List of 2
- $ echo : logi TRUE
- $ cache: logi TRUE
+List of 1
+ $ echo: logi TRUE
 
   |                                                                              |................................                                      |  46%
   ordinary text without R code
 
   |                                                                              |..................................                                    |  49%
 label: unnamed-chunk-8 (with options) 
-List of 2
- $ echo : logi FALSE
- $ cache: logi TRUE
+List of 1
+ $ echo: logi FALSE
 
   |                                                                              |....................................                                  |  51%
   ordinary text without R code
 
   |                                                                              |......................................                                |  54%
 label: unnamed-chunk-9 (with options) 
-List of 3
+List of 2
  $ echo   : logi TRUE
- $ cache  : logi TRUE
  $ results: chr "hide"
 
   |                                                                              |........................................                              |  57%
@@ -113,19 +107,17 @@ List of 4
 
   |                                                                              |.............................................                         |  65%
 label: unnamed-chunk-11 (with options) 
-List of 2
- $ echo : logi FALSE
- $ cache: logi TRUE
+List of 1
+ $ echo: logi FALSE
 
   |                                                                              |...............................................                       |  68%
   ordinary text without R code
 
   |                                                                              |.................................................                     |  70%
 label: unnamed-chunk-12 (with options) 
-List of 3
+List of 2
  $ echo   : logi TRUE
  $ results: chr "hide"
- $ cache  : logi TRUE
 
   |                                                                              |...................................................                   |  73%
   ordinary text without R code
@@ -143,9 +135,8 @@ List of 4
 
   |                                                                              |.........................................................             |  81%
 label: unnamed-chunk-14 (with options) 
-List of 2
- $ echo : logi FALSE
- $ cache: logi TRUE
+List of 1
+ $ echo: logi FALSE
 
   |                                                                              |...........................................................           |  84%
   ordinary text without R code
@@ -170,9 +161,8 @@ List of 1
 
   |                                                                              |....................................................................  |  97%
 label: unnamed-chunk-17 (with options) 
-List of 2
- $ echo : logi FALSE
- $ cache: logi TRUE
+List of 1
+ $ echo: logi FALSE
 
   |                                                                              |......................................................................| 100%
   ordinary text without R code
@@ -185,4 +175,4 @@ output file: Lecture_matching.knit.md
 Output created: Lecture_matching.pdf
 > proc.time()
    user  system elapsed 
-145.714  24.888 214.403 
+ 29.929   6.576  69.694 
